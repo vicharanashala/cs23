@@ -1,0 +1,21 @@
+{
+  "name": "faq-platform",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/server",
+    "apps/web",
+    "apps/admin"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "dev:server": "npm run dev -w apps/server",
+    "dev:web": "npm run dev -w apps/web",
+    "dev:admin": "npm run dev -w apps/admin",
+    "install:all": "npm install"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
