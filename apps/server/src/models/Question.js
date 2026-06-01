@@ -34,7 +34,7 @@ const QuestionSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['pending', 'public_community', 'official_faq'],
+      enum: ['pending', 'public_community', 'official_faq', 'rejected'],
       default: 'pending',
       index: true,
     },

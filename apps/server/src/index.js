@@ -1,30 +1,54 @@
-require('dotenv').config();
+// FIRST — enable express-async-errors before anything else
+require('express-async-errors');
+
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const { PORT, CLIENT_URL, ADMIN_URL } = require('./config/env');
+const connectDB = require('./config/db');
+const errorHandler = require('./middleware/errorHandler');
+const logger = require('./middleware/logger');
+const healthRouter = require('./routes/health');
+const faqRouter = require('./routes/faq.routes');
+const ticketRouter = require('./routes/ticket.routes');
+const adminRouter = require('./routes/admin.routes');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true,
-}));
+
+// Security & logging middleware (in order)
+app.use(helmet());
+app.use(logger);
+
+// CORS — allow both the web client and admin portal
+app.use(
+  cors({
+    origin: [CLIENT_URL, ADMIN_URL],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'FAQ Platform API is healthy', timestamp: new Date().toISOString() });
-});
+// Routes
+app.use('/api', healthRouter);
+app.use('/api', faqRouter);
+app.use('/api', ticketRouter);
+app.use('/api', adminRouter);
 
-// Placeholder routes (to be implemented)
 app.get('/api', (req, res) => {
   res.json({ success: true, name: 'FAQ Platform API', version: '0.1.0' });
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ FAQ Platform API running on http://localhost:${PORT}`);
-  console.log(`   Health: http://localhost:${PORT}/api/health`);
+// GLOBAL ERROR HANDLER — must be last
+app.use(errorHandler);
+
+// Start server
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`✅ FAQ Platform API running on http://localhost:${PORT}`);
+    console.log(`   Health: http://localhost:${PORT}/api/health`);
+  });
 });
 
 module.exports = app;

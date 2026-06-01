@@ -5,17 +5,21 @@
   "workspaces": [
     "apps/server",
     "apps/web",
-    "apps/admin"
+    "apps/admin",
+    "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
+    "dev": "concurrently \"npm run dev -w apps/server\" \"npm run dev -w apps/web\"",
+    "dev:all": "concurrently \"npm run dev -w apps/server\" \"npm run dev -w apps/web\" \"npm run dev -w apps/admin\"",
     "dev:server": "npm run dev -w apps/server",
     "dev:web": "npm run dev -w apps/web",
     "dev:admin": "npm run dev -w apps/admin",
+    "build": "npm run build --workspaces --if-present",
     "install:all": "npm install"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.4",
     "typescript": "^5.4.0"
   }
 }

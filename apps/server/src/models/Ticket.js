@@ -48,6 +48,17 @@ const TicketSchema = new mongoose.Schema(
       ref: 'Question',
       default: null,
     },
+
+    history: {
+      type: [
+        {
+          status: { type: String },
+          changedAt: { type: Date, default: Date.now },
+          note: { type: String, default: null },
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,
