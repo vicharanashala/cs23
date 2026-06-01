@@ -1,14 +1,14 @@
-# Samagama Crowdsourced FAQ Platform
+# CrowdFAQ — General-Purpose Crowdsourced FAQ Platform
 
-> A MERN-stack crowdsourced FAQ platform for internship support, featuring a 2-tier FAQ system, AI-driven content gap analysis, and an emergency diagnostic tool.
+> A MERN-stack general-purpose FAQ platform with a 2-tier crowdsourced FAQ system, AI-driven content gap analysis, and an emergency diagnostic tool.
 
 ---
 
 ## 🎯 Overview
 
-The **Samagama Crowdsourced FAQ Platform** enables internship candidates to browse curated official FAQs and community-asked questions, submit unique support tickets, and track resolution status — all in one place. Admins manage content quality through a dedicated portal with moderation queues and content gap analytics.
+**CrowdFAQ** enables communities to browse curated official FAQs and community-contributed questions, submit unique support tickets, and track resolution status — all in one place. Admins manage content quality through a dedicated portal with moderation queues and content gap analytics.
 
-**Live URL:** `samagama.in/internship/faq`
+**Live URL:** `https://your-domain.com/faq`
 
 ---
 
@@ -26,19 +26,20 @@ The **Samagama Crowdsourced FAQ Platform** enables internship candidates to brow
 
 ## ✨ Features
 
-### Public App (`samagama.in/internship/faq`)
+### Public App
 
 - [x] **3-Stage Navigation:** Browse → Submit → Track
 - [x] **2-Tier FAQ System:** Official FAQs (curated) + Community Questions (user-submitted)
 - [x] **Auto-Promotion Pipeline:** Community questions with ≥15 upvotes automatically elevate to Official status
-- [x] **Innovation A — 3-Step Emergency Diagnostic Quiz:** Interactive wizard for urgent internship issues (focus area → phase → urgency → priority recommendation)
+- [x] **Innovation A — 3-Step Emergency Diagnostic Quiz:** Interactive wizard with 27-path recommendation matrix (focus area → phase → urgency → priority action script)
 - [x] **Innovation B — Debounced Duplicate Submission Blocker:** Real-time similarity search before ticket submission, suggesting existing answers
+- [x] **TF-IDF Auto-Categorization:** Automatically suggests a category for submitted tickets based on description content
 - [x] **Debounced Search:** 300ms debounce on search queries with MongoDB text index
 - [x] **Category Filtering:** Filter by Application Setup, Test & Coding Assessment, Stipend & Offer Letters, Internship Tasks
 - [x] **Upvoting + Star Ratings:** Authenticated via localStorage session ID
 - [x] **Ticket Tracking:** Nanoid-based tracking IDs (`TKT-2026-XXXXXXXX`)
 
-### Admin Portal (`samagama.in/internship/faq/admin`)
+### Admin Portal
 
 - [x] **JWT Authentication** with rate-limited login (10 attempts / 15 min per IP)
 - [x] **Ticket Management:** Filter by status (All/Pending/Under Review/Resolved/Closed), update status + admin notes with history tracking
@@ -96,9 +97,9 @@ cd ..
 ```
 
 This seeds:
-- **8 Official FAQs** (covering stipend, onboarding, coding test, VSC setup, etc.)
+- **8 Official FAQs** (general-purpose template questions)
 - **6 Community Questions** in various states
-- **1 Admin account:** `admin` / `admin123`
+- **1 Admin account:** `admin` / `admin123` (change in production)
 
 ### 5. Start Development Servers
 
@@ -121,7 +122,7 @@ npm run dev:all
 
 - **URL:** http://localhost:5174
 - **Username:** `admin`
-- **Password:** `admin123`
+- **Password:** `admin123` *(change this in production)*
 
 ---
 
@@ -156,7 +157,7 @@ cs23/
 │   │       ├── models/      # Question, Ticket, Rating, SearchLog, Admin
 │   │       ├── routes/      # faq.routes.js, ticket.routes.js, admin.routes.js
 │   │       ├── scripts/     # seed.js
-│   │       └── utils/       # ApiError.js
+│   │       └── utils/       # ApiError.js, tfidf.js
 │   ├── web/             # Public React app (port 5173)
 │   │   └── src/
 │   │       ├── components/  # ui/ (Button, Input, Badge, Card, Spinner, Accordion)

@@ -29,19 +29,19 @@ const RECOMMENDATIONS: Record<FocusArea, Record<Phase, Record<Urgency, { priorit
     // Selection Process
     A: {
       // Applied
-      A: { priority: 'HIGH', actionScript: 'Your selection-related issue needs immediate attention. Email internships@samagama.in with subject "URGENT: Selection Process Issue — Applied Stage". Include your registration email, application ID, and a brief description of the problem. Expect a response within 2 working hours.' },
-      B: { priority: 'MEDIUM', actionScript: 'Your selection process concern has been noted. Please raise a ticket via the "Submit a New Question" form with details of the issue and any reference IDs you have. Our team reviews these within 1 working day.' },
-      C: { priority: 'LOW', actionScript: 'For older selection process concerns, please raise a support ticket with all relevant details and reference IDs. Visit the "Track Ticket Status" page to check existing ticket resolution times.' },
+      A: { priority: 'HIGH', actionScript: 'Your selection-related issue needs immediate attention. Raise an urgent ticket via the "Submit Ticket" form with subject "URGENT: Selection Process Issue — Applied Stage". Include your registration email, application ID, and a brief description of the problem. Expect a response within 2 working hours.' },
+      B: { priority: 'MEDIUM', actionScript: 'Your selection process concern has been noted. Please raise a ticket via the "Submit Ticket" form with details of the issue and any reference IDs you have. Our team reviews these within 1 working day.' },
+      C: { priority: 'LOW', actionScript: 'For older selection process concerns, please raise a support ticket with all relevant details and reference IDs. Visit the "Track Ticket" page to check existing ticket resolution times.' },
     },
     B: {
       // In Progress
-      A: { priority: 'HIGH', actionScript: 'An in-progress selection issue requires immediate escalation. Email internships@samagama.in with subject "URGENT: Selection Process — In Progress". Attach any screenshots, email confirmations, or communication you have received. Response expected within 2 working hours.' },
+      A: { priority: 'HIGH', actionScript: 'An in-progress selection issue requires immediate escalation. Raise an urgent ticket via the "Submit Ticket" form with subject "URGENT: Selection Process — In Progress". Attach any screenshots, email confirmations, or communication you have received. Response expected within 2 working hours.' },
       B: { priority: 'MEDIUM', actionScript: 'Please raise a support ticket describing your in-progress selection issue in detail. Include any assessment links, deadline dates, and communication received. Our technical team will review within 1 working day.' },
       C: { priority: 'LOW', actionScript: 'Long-standing selection concerns should be documented in a support ticket with all reference materials. Check existing tickets at the Track page for resolution status.' },
     },
     C: {
       // Completed
-      A: { priority: 'MEDIUM', actionScript: 'Completed selection concerns still need follow-up. Email internships@samagama.in with your final offer or confirmation details and describe the specific issue. We will review and respond within 2 working hours.' },
+      A: { priority: 'MEDIUM', actionScript: 'Completed selection concerns still need follow-up. Raise a support ticket with your final offer or confirmation details and describe the specific issue. Our team will review and respond within 2 working hours.' },
       B: { priority: 'LOW', actionScript: 'Please submit a ticket with details of your completed selection process concern. Include any offer letters, confirmation emails, or reference IDs. Our team will get back to you within 2 working days.' },
       C: { priority: 'LOW', actionScript: 'For completed selection matters that need revisiting, raise a formal support ticket with all relevant documentation. Visit the Track page for guidance on escalation paths.' },
     },
@@ -50,19 +50,19 @@ const RECOMMENDATIONS: Record<FocusArea, Record<Phase, Record<Urgency, { priorit
     // Onboarding & Documents
     A: {
       // Applied
-      A: { priority: 'HIGH', actionScript: 'Onboarding document issues require immediate resolution. Email internships@samagama.in with subject "URGENT: Onboarding Document Issue" and attach copies of the documents you have submitted. Expect confirmation within 2 working hours.' },
+      A: { priority: 'HIGH', actionScript: 'Onboarding document issues require immediate resolution. Raise an urgent ticket via the "Submit Ticket" form with subject "URGENT: Onboarding Document Issue" and describe the problem clearly. Expect confirmation within 2 working hours.' },
       B: { priority: 'MEDIUM', actionScript: 'Please raise a support ticket describing your onboarding document submission. Include document types, submission dates, and any confirmation received. Team reviews within 1 working day.' },
       C: { priority: 'LOW', actionScript: 'Document-related onboarding concerns should be documented in a ticket. Ensure you attach any reference numbers or email confirmations you have received.' },
     },
     B: {
       // In Progress
-      A: { priority: 'HIGH', actionScript: 'Active onboarding document issues need immediate escalation. Email internships@samagama.in with subject "URGENT: Onboarding In Progress — Document Issue". List all pending documents and your expected start date. Response within 2 working hours.' },
+      A: { priority: 'HIGH', actionScript: 'Active onboarding document issues need immediate escalation. Raise an urgent ticket via the "Submit Ticket" form with subject "URGENT: Onboarding In Progress — Document Issue". List all pending documents and your expected start date. Response within 2 working hours.' },
       B: { priority: 'MEDIUM', actionScript: 'Submit a ticket with details of which onboarding documents are pending or rejected. Our documentation team will provide guidance on the correct format and re-submission process within 1 working day.' },
       C: { priority: 'LOW', actionScript: 'Long-standing onboarding document issues should be formalised as a support ticket with all document reference IDs and submission history.' },
     },
     C: {
       // Completed
-      A: { priority: 'MEDIUM', actionScript: 'Completed onboarding concerns can still be addressed. Email internships@samagama.in with your onboarding confirmation number and a description of the concern. We will review within 2 working hours.' },
+      A: { priority: 'MEDIUM', actionScript: 'Completed onboarding concerns can still be addressed. Raise a support ticket with your onboarding confirmation number and a description of the concern. Our team will review within 2 working hours.' },
       B: { priority: 'LOW', actionScript: 'Please raise a ticket if your onboarding completion has an outstanding concern. Include your confirmation number and a summary of the issue.' },
       C: { priority: 'LOW', actionScript: 'Resolved onboarding matters can be revisited via a formal support ticket. Please include all reference IDs and documentation for review.' },
     },
@@ -71,19 +71,19 @@ const RECOMMENDATIONS: Record<FocusArea, Record<Phase, Record<Urgency, { priorit
     // Internship Tasks
     A: {
       // Applied
-      A: { priority: 'HIGH', actionScript: 'Task assignment issues need immediate attention if they are blocking your start. Email internships@samagama.in with subject "URGENT: Task Assignment Issue — Not Started". Include your internship start date and any communication about assigned tasks. Response within 2 working hours.' },
-      B: { priority: 'MEDIUM', actionScript: 'Raise a support ticket describing your assigned tasks and any blockers you are facing. Include task IDs or names if available. Our internship coordination team will respond within 1 working day.' },
+      A: { priority: 'HIGH', actionScript: 'Task assignment issues need immediate attention if they are blocking your start. Raise an urgent ticket via the "Submit Ticket" form with subject "URGENT: Task Assignment Issue — Not Started". Include your start date and any communication about assigned tasks. Response within 2 working hours.' },
+      B: { priority: 'MEDIUM', actionScript: 'Raise a support ticket describing your assigned tasks and any blockers you are facing. Include task IDs or names if available. Our coordination team will respond within 1 working day.' },
       C: { priority: 'LOW', actionScript: 'Task assignment concerns that have been ongoing should be formalised as a support ticket with details of all assigned and completed tasks.' },
     },
     B: {
       // In Progress
-      A: { priority: 'HIGH', actionScript: 'Active task issues with imminent deadlines require immediate escalation. Email internships@samagama.in with subject "URGENT: Task Deadline Issue — In Progress". State the specific task, deadline, and nature of the problem. Expect a response within 2 working hours.' },
+      A: { priority: 'HIGH', actionScript: 'Active task issues with imminent deadlines require immediate escalation. Raise an urgent ticket via the "Submit Ticket" form with subject "URGENT: Task Deadline Issue — In Progress". State the specific task, deadline, and nature of the problem. Expect a response within 2 working hours.' },
       B: { priority: 'MEDIUM', actionScript: 'Submit a ticket with details of the task you are working on, the specific blocker, and any deadline. Our task support team will advise on next steps within 1 working day.' },
       C: { priority: 'LOW', actionScript: 'Long-running task issues should be documented as a support ticket with task references and a summary of attempts made to resolve the issue.' },
     },
     C: {
       // Completed
-      A: { priority: 'MEDIUM', actionScript: 'Post-completion task concerns can be escalated by emailing internships@samagama.in with your task completion proof and a description of the concern. Response expected within 2 working hours.' },
+      A: { priority: 'MEDIUM', actionScript: 'Post-completion task concerns can be escalated by raising a support ticket with your task completion proof and a description of the concern. Our team will respond within 2 working hours.' },
       B: { priority: 'LOW', actionScript: 'Please raise a ticket if a completed task has a pending payment, certificate, or feedback concern. Include task ID, completion date, and any correspondence.' },
       C: { priority: 'LOW', actionScript: 'Historical task completion concerns can be addressed via a formal support ticket. Please provide all task IDs, completion dates, and supporting documentation.' },
     },

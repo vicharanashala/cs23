@@ -32,9 +32,9 @@ const OFFICIAL_FAQS = [
   {
     title: 'How do I reset my test password if I forgot it?',
     description:
-      'Go to the test platform login page and click "Forgot Password". Enter your registered email address and you will receive a reset link within 5 minutes. If you do not receive the email, check your spam folder or contact internships@samagama.in.',
+      'Go to the test platform login page and click "Forgot Password". Enter your registered email address and you will receive a reset link within 5 minutes. If you do not receive the email, check your spam folder or contact support@yourplatform.com.',
     category: 'Test & Coding Assessment',
-    submitterEmail: 'internships@samagama.in',
+    submitterEmail: 'support@yourplatform.com',
     status: 'official_faq',
     isOfficialFAQ: true,
     upvotes: 0,
@@ -48,7 +48,7 @@ const OFFICIAL_FAQS = [
     description:
       'Once you clear all interview rounds, the offer letter is generated within 3–5 working days. You will receive it on your registered email address. If more than 7 working days have passed, raise a ticket under "Stipend & Offer Letters" category.',
     category: 'Stipend & Offer Letters',
-    submitterEmail: 'internships@samagama.in',
+    submitterEmail: 'support@yourplatform.com',
     status: 'official_faq',
     isOfficialFAQ: true,
     upvotes: 0,
@@ -62,7 +62,7 @@ const OFFICIAL_FAQS = [
     description:
       'If your test link has expired before you could attempt it, immediately raise a support ticket with your registered email, the test name, and the expired link. Our technical team will verify the reason and issue a new link within 2 working hours during business hours.',
     category: 'Test & Coding Assessment',
-    submitterEmail: 'internships@samagama.in',
+    submitterEmail: 'support@yourplatform.com',
     status: 'official_faq',
     isOfficialFAQ: true,
     upvotes: 0,
@@ -76,7 +76,7 @@ const OFFICIAL_FAQS = [
     description:
       'After your offer is confirmed, you will receive a welcome email with a document upload link. Upload a scanned copy of your government-issued ID, academic certificates, and a recent photograph. All documents must be in PDF or JPG format, under 5MB each.',
     category: 'Application Setup',
-    submitterEmail: 'internships@samagama.in',
+    submitterEmail: 'support@yourplatform.com',
     status: 'official_faq',
     isOfficialFAQ: true,
     upvotes: 0,
@@ -86,11 +86,11 @@ const OFFICIAL_FAQS = [
     tags: ['documents', 'onboarding', 'upload'],
   },
   {
-    title: 'How do I join the GitHub organization for my internship project?',
+    title: 'How do I join the GitHub organization for my project?',
     description:
       'You will receive a GitHub organization invite link via email once your onboarding is complete. Click the link and accept the invitation. If you have not received it within 24 hours of completing onboarding, raise a ticket under "Internship Tasks" with your GitHub username.',
     category: 'Internship Tasks',
-    submitterEmail: 'internships@samagama.in',
+    submitterEmail: 'support@yourplatform.com',
     status: 'official_faq',
     isOfficialFAQ: true,
     upvotes: 0,
@@ -104,7 +104,7 @@ const OFFICIAL_FAQS = [
     description:
       'Stipend payments are processed at the end of each month for work completed in that month. The first payment is released in the month following your successful completion of the probation period (usually 30 days). Payment details will be sent to your registered bank account via NEFT.',
     category: 'Stipend & Offer Letters',
-    submitterEmail: 'internships@samagama.in',
+    submitterEmail: 'support@yourplatform.com',
     status: 'official_faq',
     isOfficialFAQ: true,
     upvotes: 0,
@@ -114,25 +114,25 @@ const OFFICIAL_FAQS = [
     tags: ['stipend', 'payment', 'salary'],
   },
   {
-    title: 'How can I track the status of my internship certificate?',
+    title: 'How can I track the status of my certificate?',
     description:
-      'Visit the FAQ portal and go to "Ticket Tracking" (State 3). Enter your ticket tracking ID to see live status updates. Certificates are issued within 5 working days after all project submissions are verified and approved by your mentor.',
+      'Visit the FAQ portal and go to "Track Ticket" section. Enter your ticket tracking ID to see live status updates. Certificates are issued within 5 working days after all project submissions are verified and approved by your mentor.',
     category: 'Internship Tasks',
-    submitterEmail: 'internships@samagama.in',
+    submitterEmail: 'support@yourplatform.com',
     status: 'official_faq',
     isOfficialFAQ: true,
     upvotes: 0,
     upvotedBy: [],
     starRating: 4.2,
     ratingCount: 15,
-    tags: ['certificate', 'tracking', 'internship-completion'],
+    tags: ['certificate', 'tracking', 'completion'],
   },
   {
-    title: 'What is the deadline for submitting my internship project?',
+    title: 'What is the deadline for submitting my project?',
     description:
-      'Project submission deadlines are communicated by your assigned mentor via email and the project board on GitHub. Generally, the final submission window opens 7 days before the internship end date. Check your email and the GitHub repository README for specific dates.',
+      'Project submission deadlines are communicated by your assigned mentor via email and the project board on GitHub. Generally, the final submission window opens 7 days before the end date. Check your email and the GitHub repository README for specific dates.',
     category: 'Internship Tasks',
-    submitterEmail: 'internships@samagama.in',
+    submitterEmail: 'support@yourplatform.com',
     status: 'official_faq',
     isOfficialFAQ: true,
     upvotes: 0,
@@ -150,7 +150,7 @@ const COMMUNITY_QUESTIONS = [
     description:
       'Every time I try to log into the test portal after logging out, it says my session is already active. I have cleared cookies and tried incognito mode but the issue persists. This is blocking my assessment.',
     category: 'Test & Coding Assessment',
-    submitterEmail: 'student1@example.com',
+    submitterEmail: 'support@yourplatform.com',
     status: 'public_community',
     isOfficialFAQ: false,
     upvotes: 16,
@@ -164,7 +164,7 @@ const COMMUNITY_QUESTIONS = [
     description:
       'I am trying to upload my resume in PDF format but the portal rejects it saying file type not supported. The file is definitely a PDF — I checked. Is there a known issue with the document upload feature?',
     category: 'Application Setup',
-    submitterEmail: 'student2@example.com',
+    submitterEmail: 'support@yourplatform.com',
     status: 'public_community',
     isOfficialFAQ: false,
     upvotes: 16,
@@ -178,7 +178,7 @@ const COMMUNITY_QUESTIONS = [
     description:
       'I received the GitHub Classroom invite link but clicking it shows a 404 page. I have verified the link is correct. Could this be because my GitHub account was created recently?',
     category: 'Internship Tasks',
-    submitterEmail: 'student3@example.com',
+    submitterEmail: 'support@yourplatform.com',
     status: 'public_community',
     isOfficialFAQ: false,
     upvotes: 8,
@@ -192,7 +192,7 @@ const COMMUNITY_QUESTIONS = [
     description:
       'I submitted all my documents 3 days ago and received confirmation. But I have not received the welcome email that should contain my internship credentials and next steps. Is there a delay?',
     category: 'Stipend & Offer Letters',
-    submitterEmail: 'student4@example.com',
+    submitterEmail: 'support@yourplatform.com',
     status: 'public_community',
     isOfficialFAQ: false,
     upvotes: 8,
@@ -206,7 +206,7 @@ const COMMUNITY_QUESTIONS = [
     description:
       'I accepted the offer letter but need to push my start date by a week due to academic commitments. Who should I contact and is this generally allowed?',
     category: 'Application Setup',
-    submitterEmail: 'student5@example.com',
+    submitterEmail: 'support@yourplatform.com',
     status: 'public_community',
     isOfficialFAQ: false,
     upvotes: 3,
@@ -220,7 +220,7 @@ const COMMUNITY_QUESTIONS = [
     description:
       'The offer letter says Rs 8,000/month but during the interview call I was told Rs 10,000/month. There is a significant difference. How do I clarify this discrepancy?',
     category: 'Stipend & Offer Letters',
-    submitterEmail: 'student6@example.com',
+    submitterEmail: 'support@yourplatform.com',
     status: 'public_community',
     isOfficialFAQ: false,
     upvotes: 3,

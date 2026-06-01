@@ -11,7 +11,7 @@ export function AppShell() {
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xs">FAQ</span>
             </div>
-            <span className="font-semibold text-gray-900 text-base">Samagama FAQ Hub</span>
+            <span className="font-semibold text-gray-900 text-base">CrowdFAQ</span>
           </Link>
 
           {/* Right: Admin Portal */}

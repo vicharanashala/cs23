@@ -309,8 +309,8 @@ Score a completed 3-step emergency quiz and return an action script.
       "steps": [
         {
           "action": "CONTACT_SUPPORT",
-          "message": "Your test link issue requires immediate attention. Email internships@samagama.in with your registered email and test session ID.",
-          "contactEmail": "internships@samagama.in",
+          "message": "Your test link issue requires immediate attention. Raise a support ticket with your registered email and test session ID.",
+          "contactEmail": "support@yourplatform.com",
           "subject": "URGENT: Test Link Not Working [In Progress]"
         },
         {
@@ -322,7 +322,7 @@ Score a completed 3-step emergency quiz and return an action script.
       "expectedResponse": "Within 2 working hours during business days",
       "alternativeChannels": [
         "Raise a ticket: FAQ-X7K9M2LP",
-        "Check status at samagama.in/internship/faq — State 3"
+        "Check status at your-domain.com/faq/track — State 3"
       ]
     }
   }
@@ -344,7 +344,7 @@ Admin login.
 
 **Request Body:**
 ```json
-{ "email": "admin@samagama.in", "password": "..." }
+{ "email": "admin@yourplatform.com", "password": "..." }
 ```
 
 **Response:**
@@ -353,7 +353,7 @@ Admin login.
   "success": true,
   "data": {
     "token": "eyJhbGc...",
-    "admin": { "_id": "...", "email": "admin@samagama.in", "displayName": "Admin" }
+    "admin": { "_id": "...", "email": "admin@yourplatform.com", "displayName": "Admin" }
   }
 }
 ```

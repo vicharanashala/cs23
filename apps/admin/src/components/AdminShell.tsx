@@ -54,7 +54,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <span className="text-white font-bold text-xs">S</span>
             </div>
             <div>
-              <p className="text-white font-semibold text-sm leading-tight">Samagama FAQ</p>
+              <p className="text-white font-semibold text-sm leading-tight">CrowdFAQ</p>
               <p className="text-gray-400 text-xs">Admin Portal</p>
             </div>
           </div>

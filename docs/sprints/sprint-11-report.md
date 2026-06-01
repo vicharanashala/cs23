@@ -72,7 +72,7 @@ Additional HIGH priority paths added:
 - `AA→A`, `AB→A`, `BA→A`, `BB→A`, `BC→A` (all areas with "Just happened now" urgency)
 - `CA→A` (Internship Tasks/Applied/Just happened now)
 
-Each HIGH path generates an urgent email action script with `internships@samagama.in`, subject line, and specific instructions.
+Each HIGH path generates an urgent ticket action script with specific instructions and a suggested subject line.
 
 All others: `MEDIUM` or `LOW` with appropriate guidance.
 

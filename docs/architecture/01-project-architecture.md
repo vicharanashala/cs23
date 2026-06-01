@@ -148,7 +148,7 @@ Other transitions:
 
 ```
                     ┌─────────────────────┐
-                    │  samagama.in        │
+                    │  your-domain.com     │
                     │  (reverse proxy)    │
                     │                     │
                     │  /internship/faq   │──► FAQ Platform Frontend (React)

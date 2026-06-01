@@ -1,4 +1,4 @@
-# API Documentation — Samagama FAQ Platform
+# API Documentation — CrowdFAQ Platform
 
 **Base URL:** `http://localhost:3001/api`  
 **Content-Type:** `application/json`

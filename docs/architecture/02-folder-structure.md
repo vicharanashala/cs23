@@ -232,8 +232,8 @@ When the project scales, extract:
 
 ### Build Outputs
 ```
-apps/web/dist/        → deployed to /internship/faq on samagama.in
-apps/admin/dist/      → deployed to /admin on samagama.in
+apps/web/dist/        → deployed to /faq (or custom path) on your-domain.com
+apps/admin/dist/      → deployed to /admin (or custom path) on your-domain.com
 apps/server/          → runs as Node.js process, port 3001 (not served as static files)
 ```
 
