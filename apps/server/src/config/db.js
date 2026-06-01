@@ -7,15 +7,18 @@ if (!cached) {
   cached = global.__mongoose = { conn: null, promise: null };
 }
 
+function buildUri(uri) {
+  // Append connection timeout params if not already present
+  const separator = uri.includes('?') ? '&' : '?';
+  return `${uri}${separator}connectTimeoutMS=10000&serverSelectionTimeoutMS=10000&socketTimeoutMS=30000`;
+}
+
 async function connectDB() {
   if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
-      maxPoolSize: 1,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-    }).then((m) => {
+    const uri = buildUri(MONGODB_URI);
+    cached.promise = mongoose.connect(uri, { maxPoolSize: 1 }).then((m) => {
       cached.conn = m;
       return m;
     }).catch((err) => {
