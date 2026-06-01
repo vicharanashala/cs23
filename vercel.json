@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "maxDuration": 30,
+  "builds": [
+    {
+      "src": "apps/server/src/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["apps/server/src/**", "node_modules/**"],
+        "excludeFiles": ["apps/web/**", "apps/admin/**"]
+      }
+    },
+    {
+      "src": "apps/web/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    },
+    {
+      "src": "apps/admin/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "apps/server/src/index.js",
+      "headers": {
+        "Access-Control-Allow-Origin": "*"
+      }
+    },
+    {
+      "src": "/admin",
+      "dest": "apps/admin/dist/index.html"
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "apps/admin/dist/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "apps/web/dist/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
