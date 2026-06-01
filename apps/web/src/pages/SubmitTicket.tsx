@@ -134,7 +134,7 @@ function DuplicatePanel({ matches, onDismiss, onResolve }: DuplicatePanelProps) 
 
 // ─── Success State ────────────────────────────────────────────────────────────
 
-function SuccessState({ trackingId }: { trackingId: string }) {
+function SuccessState({ trackingId, suggestedCategory }: { trackingId: string; suggestedCategory?: string | null }) {
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate({ from: '/submit' });
 
@@ -156,6 +156,14 @@ function SuccessState({ trackingId }: { trackingId: string }) {
           Your support ticket has been received.
         </p>
       </div>
+
+      {suggestedCategory && (
+        <div className="flex justify-center">
+          <Badge variant="official" className="text-sm px-3 py-1">
+            🤖 Auto-categorized as: {suggestedCategory}
+          </Badge>
+        </div>
+      )}
 
       <Card className="max-w-sm mx-auto border-green-200 bg-green-50">
         <CardBody className="space-y-3">
@@ -273,17 +281,18 @@ function SubmitTicketInner() {
   // ── Submit Mutation ───────────────────────────────────────────────────────
   const submitMutation = useMutation({
     mutationFn: (data: FormValues) =>
-      api.post<{ trackingId: string }>('/tickets', data),
+      api.post<{ trackingId: string; suggestedCategory?: string | null }>('/tickets', data),
     onSuccess: (response) => {
-      // axios response: response.data is the parsed JSON body { trackingId, ... }
-      const trackingId = response.data?.trackingId ?? '';
+      const { trackingId = '', suggestedCategory = null } = response.data ?? {};
       setSubmittedTrackingId(trackingId);
+      setSubmittedSuggestedCategory(suggestedCategory ?? undefined);
       setIsSubmitted(true);
     },
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedTrackingId, setSubmittedTrackingId] = useState('');
+  const [submittedSuggestedCategory, setSubmittedSuggestedCategory] = useState<string | undefined>(undefined);
 
   // Reset submitted state on route change
   useEffect(() => {
@@ -299,7 +308,7 @@ function SubmitTicketInner() {
   };
 
   if (resolved) return <ResolvedState />;
-  if (isSubmitted) return <SuccessState trackingId={submittedTrackingId} />;
+  if (isSubmitted) return <SuccessState trackingId={submittedTrackingId} suggestedCategory={submittedSuggestedCategory} />;
 
   return (
     <div className="max-w-lg mx-auto space-y-5">

@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { nanoid } = require('nanoid');
 const Ticket = require('../models/Ticket');
 const ApiError = require('../utils/ApiError');
+const { categorize } = require('../utils/tfidf');
 
 const router = express.Router();
 
@@ -49,6 +50,9 @@ router.post('/tickets', async (req, res) => {
   const suffix = nanoid(8).toUpperCase();
   const trackingId = `TKT-${year}-${suffix}`;
 
+  // TF-IDF auto-categorization (based on email + description text)
+  const suggestedCategory = categorize(`${email} ${description}`);
+
   const ticket = await Ticket.create({
     trackingId,
     submitterEmail: email,
@@ -58,11 +62,17 @@ router.post('/tickets', async (req, res) => {
     history: [{ status: 'pending', changedAt: new Date(), note: 'Submitted' }],
   });
 
-  res.status(201).json({
+  const response = {
     success: true,
     trackingId,
     message: 'Ticket submitted successfully',
-  });
+  };
+
+  if (suggestedCategory) {
+    response.suggestedCategory = suggestedCategory;
+  }
+
+  res.status(201).json(response);
 });
 
 // ---------------------------------------------------------------------------
