@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import api from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
@@ -357,36 +357,57 @@ function OfficialFaqItem({ faq }: { faq: Faq }) {
 function CommunityFaqItem({ faq, upvoted, sessionId }: { faq: Faq; upvoted: boolean; sessionId: string }) {
   const queryClient = useQueryClient();
 
-  const upvoteMutation = useQueryClient().getQueryCache().build(queryClient, {
-    queryKey: ['community-faqs'],
-    queryFn: () => Promise.resolve(null),
+  const upvoteMutation = useMutation({
+    mutationFn: () => api.post(`/faqs/${faq._id}/upvote`, { sessionId }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['community-faqs'] });
+    },
   });
 
-  // Use manual mutation approach
-  const doUpvote = async () => {
-    if (upvoted) return;
-    await api.post(`/faqs/${faq._id}/upvote`, { sessionId });
-    queryClient.invalidateQueries({ queryKey: ['community-faqs'] });
+  const handleUpvote = () => {
+    if (!upvoted && !upvoteMutation.isPending) {
+      upvoteMutation.mutate();
+    }
   };
 
+  const upvoteCount = upvoteMutation.isSuccess && upvoteMutation.data?.data?.upvotes !== undefined
+    ? upvoteMutation.data.data.upvotes
+    : faq.upvotes;
+
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardBody className="space-y-2">
-        <p className="text-sm font-medium text-gray-900">{faq.title}</p>
+    <Card className={`hover:shadow-md transition-all ${upvoted ? 'border-indigo-200 bg-indigo-50/30' : ''}`}>
+      <CardBody className="space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-medium text-gray-900 leading-snug flex-1">{faq.title}</p>
+          {faq.category && (
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">{faq.category}</span>
+          )}
+        </div>
+
         {faq.description && (
-          <p className="text-xs text-gray-600 line-clamp-2">{faq.description}</p>
+          <p className="text-xs text-gray-600 leading-relaxed">{faq.description}</p>
         )}
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-3 pt-1">
+          {/* Upvote Button */}
           <button
-            onClick={doUpvote}
-            disabled={upvoted}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-              upvoted ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600 hover:bg-indigo-50'
+            onClick={handleUpvote}
+            disabled={upvoted || upvoteMutation.isPending}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus:ring-2 focus:ring-indigo-400 focus:outline-none ${
+              upvoted
+                ? 'bg-indigo-100 text-indigo-700 cursor-default'
+                : 'bg-gray-100 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600'
             }`}
+            title={upvoted ? 'You found this helpful' : 'Mark as helpful'}
           >
-            👍 {faq.upvotes}
+            <span>{upvoted ? '✅' : '👍'}</span>
+            <span>{upvoteCount}</span>
+            <span className="hidden sm:inline">{upvoted ? 'Helpful' : 'Found helpful'}</span>
           </button>
-          <span className="text-xs text-gray-400">{faq.category}</span>
+
+          {upvoted && (
+            <span className="text-xs text-indigo-600 font-medium">Thank you for your feedback!</span>
+          )}
         </div>
       </CardBody>
     </Card>
