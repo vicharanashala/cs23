@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import api from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
@@ -7,9 +7,10 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardBody } from '../components/ui/Card';
 import { Accordion } from '../components/ui/Accordion';
+import { Spinner } from '../components/ui/Spinner';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface Faq {
   _id: string;
@@ -28,7 +29,15 @@ interface Faq {
   createdAt: string;
 }
 
-// ─── Session ID ───────────────────────────────────────────────────────────────
+interface KeywordResult {
+  question: string;
+  answer: string;
+  score: number;
+}
+
+type SearchMode = 'keyword' | 'ai';
+
+// ─── Session ID ────────────────────────────────────────────────────────────────
 
 function getSessionId(): string {
   let id = localStorage.getItem('faq_session_id');
@@ -39,7 +48,7 @@ function getSessionId(): string {
   return id;
 }
 
-// ─── API Functions ────────────────────────────────────────────────────────────
+// ─── Categories ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
   'Application Setup',
@@ -48,6 +57,8 @@ const CATEGORIES = [
   'Internship Tasks',
 ] as const;
 type Category = (typeof CATEGORIES)[number] | '';
+
+// ─── API: MongoDB FAQ fetch ────────────────────────────────────────────────────
 
 function fetchFaqs(params: {
   type: 'official' | 'community';
@@ -65,38 +76,7 @@ function fetchFaqs(params: {
     .then((r) => r.data);
 }
 
-function fetchTrending() {
-  return api.get<Faq>('/faqs/trending').then((r) => r.data);
-}
-
-// ─── Star Rating ──────────────────────────────────────────────────────────────
-
-function StarRatingInput({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: number;
-  onChange: (stars: number) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex gap-1" role="group" aria-label="Rate this question">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          onClick={() => !disabled && onChange(star)}
-          disabled={disabled}
-          aria-label={`Rate ${star} star${star === 1 ? '' : 's'}`}
-          className={`text-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none rounded ${disabled ? 'cursor-default' : 'cursor-pointer hover:scale-110'}`}
-        >
-          <span className={star <= value ? 'text-yellow-400' : 'text-gray-300'}>★</span>
-        </button>
-      ))}
-    </div>
-  );
-}
+// ─── Star Rating ───────────────────────────────────────────────────────────────
 
 function StarRatingDisplay({ value, count }: { value: number; count?: number }) {
   return (
@@ -112,104 +92,229 @@ function StarRatingDisplay({ value, count }: { value: number; count?: number }) 
   );
 }
 
-// ─── SearchBar ────────────────────────────────────────────────────────────────
+// ─── AI Answer Panel ───────────────────────────────────────────────────────────
 
-function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label htmlFor="faq-search" className="block text-xs font-medium text-gray-600 mb-1.5">
-        Search
-      </label>
-      <div className="relative">
-        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-          <span className="text-gray-400 text-sm">🔍</span>
-        </div>
-        <input
-          id="faq-search"
-          type="search"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Search FAQs..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
+function AiAnswer({ query }: { query: string }) {
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [context, setContext] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const prevQueryRef = useRef<string>('');
+
+  useEffect(() => {
+    if (!query) return;
+    if (query === prevQueryRef.current) return;
+    prevQueryRef.current = query;
+    setAnswer(null);
+    setContext([]);
+    setError(null);
+
+    setIsLoading(true);
+    api.post<{ answer: string; context?: string[] }>('/chat', { message: query })
+      .then(res => {
+        setAnswer(res.data.answer);
+        setContext(res.data.context || []);
+        setError(null);
+      })
+      .catch(() => setError('Failed to get AI response. Please try again.'))
+      .finally(() => setIsLoading(false));
+  }, [query]);
+
+  if (!query) {
+    return (
+      <div className="text-center py-10 text-gray-400">
+        <div className="text-4xl mb-3">🔍</div>
+        <p className="text-sm">Ask a question above to get an AI-powered answer<br />with sources from the Samagama FAQ knowledge base.</p>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-// ─── CategoryFilter ───────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-3 py-8 px-4">
+        <Spinner size="sm" />
+        <span className="text-sm text-gray-500">Searching knowledge base and generating answer...</span>
+      </div>
+    );
+  }
 
-function CategoryFilter({
-  active,
-  onChange,
-}: {
-  active: Category;
-  onChange: (cat: Category) => void;
-}) {
-  const all: Category = '';
-  const options: { value: Category; label: string }[] = [
-    { value: all, label: 'All' },
-    ...CATEGORIES.map((c) => ({ value: c, label: c })),
-  ];
+  if (error || (!answer && !isLoading)) {
+    return (
+      <div className="text-center py-8 text-red-500 text-sm">
+        ⚠️ {error || 'Something went wrong. Please try again.'}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide" role="list">
-      {options.map(({ value, label }) => (
-        <button
-          key={value}
-          onClick={() => onChange(value)}
-          aria-pressed={active === value}
-          aria-label={`Filter by ${label || 'All categories'}`}
-          className={`
-            flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none
-            ${active === value
-              ? 'bg-indigo-600 text-white'
-              : 'bg-white border border-gray-300 text-gray-600 hover:border-indigo-400 hover:text-indigo-600'
-            }
-          `}
-        >
-          {label}
-        </button>
-      ))}
+    <div className="space-y-4">
+      {/* AI Answer */}
+      <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-sm">🤖</span>
+          <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">AI Answer</span>
+        </div>
+        <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{answer}</p>
+      </div>
+
+      {/* Source citations */}
+      {context.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Sources ({context.length})
+          </p>
+          <div className="space-y-2">
+            {context.map((doc, i) => {
+              // Extract question from document (format: "Question:\n...")
+              const qMatch = doc.match(/Question:\n(.+?)\n\nAnswer:/s);
+              const question = qMatch ? qMatch[1] : doc.substring(0, 100);
+              return (
+                <div key={i} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs font-medium text-gray-700 mb-0.5">📄 {question}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Trending Banner ──────────────────────────────────────────────────────────
+// ─── Keyword Search Results ─────────────────────────────────────────────────────
 
-function TrendingBanner() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['trending'],
-    queryFn: fetchTrending,
-    staleTime: 5 * 60 * 1000,
+function KeywordResults({ query }: { query: string }) {
+  const [selectedCategory, setSelectedCategory] = useState<Category>('');
+  const [page, setPage] = useState(1);
+  const debouncedQuery = useDebounce(query, 300);
+  const sessionId = getSessionId();
+
+  const { data: officialData, isLoading: officialLoading } = useQuery({
+    queryKey: ['official-faqs', { search: debouncedQuery, category: selectedCategory, page }],
+    queryFn: () => fetchFaqs({ type: 'official', category: selectedCategory, search: debouncedQuery, page }),
+    enabled: !!debouncedQuery,
+    staleTime: 30_000,
   });
 
-  if (isError || isLoading) return null;
+  const { data: communityData, isLoading: communityLoading } = useQuery({
+    queryKey: ['community-faqs', { search: debouncedQuery, page }],
+    queryFn: () => fetchFaqs({ type: 'community', category: selectedCategory, search: debouncedQuery, page }),
+    enabled: !!debouncedQuery,
+    staleTime: 30_000,
+  });
 
-  const title = data?.title || (data as unknown as { question?: { title: string } })?.question?.title;
+  const officialFaqs = officialData?.faqs ?? [];
+  const communityFaqs = communityData?.faqs ?? [];
+  const isLoading = officialLoading || communityLoading;
+  const hasResults = officialFaqs.length > 0 || communityFaqs.length > 0;
+  const total = (officialData?.total ?? 0) + (communityData?.total ?? 0);
 
-  if (!title) return null;
+  const queryClient = useQueryClient();
+
+  if (!query) {
+    return (
+      <div className="text-center py-10 text-gray-400">
+        <div className="text-4xl mb-3">🔤</div>
+        <p className="text-sm">Type in the search box to find<br />matching FAQs from our knowledge base.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-3 py-8">
+        <Spinner size="sm" />
+        <span className="text-sm text-gray-500">Searching...</span>
+      </div>
+    );
+  }
+
+  if (!hasResults) {
+    return (
+      <div className="text-center py-10 text-gray-400">
+        <div className="text-4xl mb-3">😕</div>
+        <p className="text-sm font-medium text-gray-600 mb-1">No results for "{query}"</p>
+        <p className="text-xs">Try different keywords or switch to AI Search for smarter answers.</p>
+      </div>
+    );
+  }
 
   return (
-    <Card className="bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-200" aria-label={`Trending FAQ: ${title}`}>
-      <CardBody className="flex items-center gap-3 py-3">
-        <span className="text-lg" aria-hidden="true">🔥</span>
-        <p className="text-sm font-medium text-gray-800">
-          Trending: <span className="text-orange-700">{title}</span>
-        </p>
-      </CardBody>
-    </Card>
-  );
-}
+    <div className="space-y-4">
+      <p className="text-xs text-gray-500">
+        {total} result{total !== 1 ? 's' : ''} found
+      </p>
 
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+      {/* Category pills */}
+      <div className="flex flex-wrap gap-2">
+        {['', ...CATEGORIES].map(cat => (
+          <button
+            key={cat}
+            onClick={() => { setSelectedCategory(cat as Category); setPage(1); }}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              selectedCategory === cat
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {cat || 'All Categories'}
+          </button>
+        ))}
+      </div>
 
-function FaqSkeleton() {
-  return (
-    <div className="animate-pulse space-y-3">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="h-20 bg-gray-100 rounded-lg" />
-      ))}
+      {/* Official FAQs */}
+      {officialFaqs.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            ✅ Official FAQs ({officialData?.total ?? 0})
+          </p>
+          <div className="space-y-2">
+            {officialFaqs.map(faq => (
+              <OfficialFaqItem key={faq._id} faq={faq} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Community Questions */}
+      {communityFaqs.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            💬 Community Questions ({communityData?.total ?? 0})
+          </p>
+          <div className="space-y-3">
+            {communityFaqs.map(faq => {
+              const upvoted = faq.upvotedBy?.includes(sessionId) ?? false;
+              return (
+                <CommunityFaqItem key={faq._id} faq={faq} upvoted={upvoted} sessionId={sessionId} />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {total > 10 && (
+        <div className="flex gap-2 pt-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={page === 1}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+          >
+            ← Previous
+          </Button>
+          <span className="text-xs text-gray-500 py-1">Page {page}</span>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={(officialData?.totalPages ?? 1) <= page && (communityData?.totalPages ?? 1) <= page}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Next →
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -221,273 +326,168 @@ function OfficialFaqItem({ faq }: { faq: Faq }) {
 
   return (
     <Accordion
-      items={[
-        {
-          id: faq._id,
-          title: faq.title,
-          body: (
-            <div className="space-y-3">
-              <p className="text-gray-700 text-sm leading-relaxed">{body}</p>
-              {faq.mediaUrls && faq.mediaUrls.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {faq.mediaUrls.map((url, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={i}
-                      src={url}
-                      alt={`Media ${i + 1}`}
-                      className="w-32 h-32 object-cover rounded-lg border border-gray-200"
-                      loading="lazy"
-                    />
-                  ))}
-                </div>
-              )}
-              {faq.starRating !== undefined && faq.starRating > 0 && (
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-xs text-gray-500">Avg rating:</span>
-                  <StarRatingDisplay value={faq.starRating} count={faq.ratingCount} />
-                </div>
-              )}
-              {faq.tags && faq.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {faq.tags.map((tag) => (
-                    <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ),
-        },
-      ]}
+      items={[{
+        id: faq._id,
+        title: faq.title,
+        body: (
+          <div className="space-y-3">
+            <p className="text-gray-700 text-sm leading-relaxed">{body}</p>
+            {faq.starRating !== undefined && faq.starRating > 0 && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-xs text-gray-500">Avg rating:</span>
+                <StarRatingDisplay value={faq.starRating} count={faq.ratingCount} />
+              </div>
+            )}
+            {faq.tags && faq.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {faq.tags.map(tag => (
+                  <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">{tag}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        ),
+      }]}
     />
   );
 }
 
-// ─── Community FAQ Card ───────────────────────────────────────────────────────
+// ─── Community FAQ Item ────────────────────────────────────────────────────────
 
-function CommunityFaqCard({ faq }: { faq: Faq }) {
+function CommunityFaqItem({ faq, upvoted, sessionId }: { faq: Faq; upvoted: boolean; sessionId: string }) {
   const queryClient = useQueryClient();
-  const sessionId = getSessionId();
-  const upvoted = faq.upvotedBy?.includes(sessionId) ?? false;
-  const nearPromotion = faq.upvotes >= 12 && faq.status !== 'official_faq';
 
-  const upvoteMutation = useMutation({
-    mutationFn: () => api.post<{ upvotes: number; promoted: boolean }>(`/faqs/${faq._id}/upvote`, { sessionId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-faqs'] });
-    },
+  const upvoteMutation = useQueryClient().getQueryCache().build(queryClient, {
+    queryKey: ['community-faqs'],
+    queryFn: () => Promise.resolve(null),
   });
 
-  const ratingMutation = useMutation({
-    mutationFn: (stars: number) => api.post(`/faqs/${faq._id}/rate`, { sessionId, stars }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-faqs'] });
-    },
-  });
+  // Use manual mutation approach
+  const doUpvote = async () => {
+    if (upvoted) return;
+    await api.post(`/faqs/${faq._id}/upvote`, { sessionId });
+    queryClient.invalidateQueries({ queryKey: ['community-faqs'] });
+  };
 
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardBody className="space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium text-gray-900 leading-snug">{faq.title}</p>
-          {nearPromotion && (
-            <Badge variant="community" className="flex-shrink-0">
-              Promoted soon
-            </Badge>
-          )}
-        </div>
-
-        {/* Upvote */}
-        <div className="flex items-center gap-2">
+      <CardBody className="space-y-2">
+        <p className="text-sm font-medium text-gray-900">{faq.title}</p>
+        {faq.description && (
+          <p className="text-xs text-gray-600 line-clamp-2">{faq.description}</p>
+        )}
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => !upvoted && upvoteMutation.mutate()}
-            disabled={upvoted || upvoteMutation.isPending}
-            aria-label={`Upvote this question, currently ${faq.upvotes} upvotes`}
-            className={`
-              flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-              ${upvoted
-                ? 'bg-indigo-100 text-indigo-700 cursor-default'
-                : 'bg-gray-100 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600'
-              }
-            `}
+            onClick={doUpvote}
+            disabled={upvoted}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+              upvoted ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600 hover:bg-indigo-50'
+            }`}
           >
-            <span aria-hidden="true">👍</span>
-            <span>{upvoteMutation.isSuccess && upvoteMutation.data?.data?.upvotes !== undefined
-              ? upvoteMutation.data.data.upvotes
-              : faq.upvotes}</span>
+            👍 {faq.upvotes}
           </button>
-          {upvoted && <span className="text-xs text-indigo-600">Upvoted</span>}
-        </div>
-
-        {/* Star rating */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">Rate:</span>
-          <StarRatingInput
-            value={0}
-            onChange={(stars) => ratingMutation.mutate(stars)}
-            disabled={ratingMutation.isPending}
-          />
-          {faq.starRating !== undefined && faq.starRating > 0 && (
-            <StarRatingDisplay value={faq.starRating} count={faq.ratingCount} />
-          )}
+          <span className="text-xs text-gray-400">{faq.category}</span>
         </div>
       </CardBody>
     </Card>
   );
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
+// ─── Empty State ───────────────────────────────────────────────────────────────
 
-function EmptyState() {
-  const navigate = useNavigate({ from: '/browse' });
+function EmptyState({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
     <div className="text-center py-12 space-y-3">
       <span className="text-4xl">🔭</span>
-      <p className="text-gray-500 text-sm">No FAQs found. Be the first to submit one!</p>
-      <Button variant="primary" size="sm" onClick={() => navigate({ to: '/submit' })}>
+      <p className="text-gray-500 text-sm">No results found.</p>
+      <Button variant="primary" size="sm" onClick={() => onNavigate('/submit')}>
         Submit a Question
       </Button>
     </div>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BrowseSearch() {
   return (
     <ErrorBoundary>
-    <BrowseSearchInner />
+      <BrowseSearchInner />
     </ErrorBoundary>
   );
 }
 
 function BrowseSearchInner() {
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<Category>('');
-  const [mobileTab, setMobileTab] = useState<'official' | 'community'>('official');
+  const [query, setQuery] = useState('');
+  const [searchMode, setSearchMode] = useState<SearchMode>('keyword');
+  const [submittedQuery, setSubmittedQuery] = useState('');
+  const navigate = useNavigate({ from: '/browse' });
 
-  const debouncedSearch = useDebounce(search, 300);
-
-  // Re-fetch when search or category changes — reset page
-  const {
-    data: officialData,
-    isLoading: officialLoading,
-    isError: officialError,
-  } = useQuery({
-    queryKey: ['official-faqs', { type: 'official', category, search: debouncedSearch, page: 1 }],
-    queryFn: () => fetchFaqs({ type: 'official', category, search: debouncedSearch, page: 1 }),
-    staleTime: 30_000,
-  });
-
-  const {
-    data: communityData,
-    isLoading: communityLoading,
-    isError: communityError,
-  } = useQuery({
-    queryKey: ['community-faqs', { type: 'community', category, search: debouncedSearch, page: 1 }],
-    queryFn: () => fetchFaqs({ type: 'community', category, search: debouncedSearch, page: 1 }),
-    staleTime: 30_000,
-  });
-
-  const officialFaqs = officialData?.faqs ?? [];
-  const communityFaqs = communityData?.faqs ?? [];
-
-  const hasResults = officialFaqs.length > 0 || communityFaqs.length > 0;
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittedQuery(query);
+  };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-w-4xl">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900 mb-0.5">Browse & Search FAQs</h1>
-        <p className="text-sm text-gray-500">Find answers or explore verified content</p>
+        <h1 className="text-xl font-bold text-gray-900 mb-0.5">Search FAQs</h1>
+        <p className="text-sm text-gray-500">Find answers from verified content or get AI-powered explanations</p>
       </div>
 
-      {/* Search Bar */}
-      <SearchBar value={search} onChange={(v) => { setSearch(v); }} />
-
-      {/* Category Filter */}
-      <CategoryFilter active={category} onChange={setCategory} />
-
-      {/* Trending Banner */}
-      <TrendingBanner />
-
-      {/* Loading skeleton at top */}
-      {(officialLoading || communityLoading) && <FaqSkeleton />}
-
-      {/* Error state */}
-      {(officialError || communityError) && (
-        <Card className="border-red-200 bg-red-50">
-          <CardBody className="text-center py-6">
-            <p className="text-red-600 text-sm">Failed to load FAQs. Please try refreshing.</p>
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Empty state */}
-      {!officialLoading && !communityLoading && !hasResults && <EmptyState />}
-
-      {/* Mobile Tabs */}
-      <div role="tablist" aria-label="FAQ category selection" className="flex sm:hidden border-b border-gray-200">
-        {(['official', 'community'] as const).map((tab) => (
+      {/* ── Google-style Search Bar ── */}
+      <form onSubmit={handleSearch} className="relative">
+        <div className="flex items-center gap-0 bg-white border border-gray-300 rounded-2xl shadow-sm hover:shadow-md transition-shadow focus-within:shadow-md focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
+          <span className="pl-4 text-gray-400 text-lg">🔍</span>
+          <input
+            type="search"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search questions about the internship program..."
+            className="flex-1 px-3 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none rounded-2xl bg-transparent"
+            autoFocus
+          />
           <button
-            key={tab}
-            id={`tab-${tab}`}
-            role="tab"
-            aria-selected={mobileTab === tab}
-            aria-controls={`${tab}-panel`}
-            onClick={() => setMobileTab(tab)}
-            className={`flex-1 py-2.5 text-sm font-medium border-b-2 transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none ${
-              mobileTab === tab
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+            type="submit"
+            className="m-1.5 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors"
           >
-            {tab === 'official' ? '✅ Official FAQs' : '💬 Community'}
+            Search
           </button>
-        ))}
+        </div>
+      </form>
+
+      {/* ── Mode Tabs ── */}
+      <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+        <button
+          onClick={() => { setSearchMode('keyword'); if (query) setSubmittedQuery(query); }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus:ring-2 focus:ring-indigo-500 focus:outline-none ${
+            searchMode === 'keyword'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          🔤 <span>Keyword Search</span>
+        </button>
+        <button
+          onClick={() => { setSearchMode('ai'); if (query) setSubmittedQuery(query); }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus:ring-2 focus:ring-indigo-500 focus:outline-none ${
+            searchMode === 'ai'
+              ? 'bg-white text-indigo-700 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          🤖 <span>AI Search</span>
+        </button>
       </div>
 
-      {/* Two-Column Desktop Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT — Official FAQs */}
-        <div role="tabpanel" id="official-panel" aria-labelledby="tab-official">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <span aria-hidden="true">✅</span> Official FAQs <span className="text-gray-400 font-normal">({officialData?.total ?? 0})</span>
-          </h2>
-          {(mobileTab === 'official' || !hasResults) && (
-            officialLoading ? <FaqSkeleton /> :
-            officialFaqs.length === 0 && !officialLoading ? (
-              <p className="text-sm text-gray-400 py-8 text-center">No official FAQs here yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {officialFaqs.map((faq) => (
-                  <OfficialFaqItem key={faq._id} faq={faq} />
-                ))}
-              </div>
-            )
-          )}
-        </div>
-
-        {/* RIGHT — Community Questions */}
-        <div role="tabpanel" id="community-panel" aria-labelledby="tab-community">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <span aria-hidden="true">💬</span> User-Asked Questions <span className="text-gray-400 font-normal">({communityData?.total ?? 0})</span>
-          </h2>
-          {(mobileTab === 'community' || !hasResults) && (
-            communityLoading ? <FaqSkeleton /> :
-            communityFaqs.length === 0 && !communityLoading ? (
-              <p className="text-sm text-gray-400 py-8 text-center">No community questions yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {communityFaqs.map((faq) => (
-                  <CommunityFaqCard key={faq._id} faq={faq} />
-                ))}
-              </div>
-            )
-          )}
-        </div>
+      {/* ── Results Area ── */}
+      <div>
+        {searchMode === 'keyword' ? (
+          <KeywordResults query={submittedQuery} />
+        ) : (
+          <AiAnswer query={submittedQuery} />
+        )}
       </div>
     </div>
   );

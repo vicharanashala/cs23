@@ -1,4 +1,5 @@
 import { Link, Outlet } from '@tanstack/react-router';
+import { ChatBot } from '../components/ChatBot';
 
 export function AppShell() {
   return (
@@ -14,15 +15,7 @@ export function AppShell() {
             <span className="font-semibold text-gray-900 text-base">CrowdFAQ</span>
           </Link>
 
-          {/* Right: Admin Portal */}
-          <a
-            href={import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
-          >
-            Admin Portal
-          </a>
+          {/* Right: empty — admin portal is a separate app, not linked from main site */}
         </div>
       </header>
 
@@ -31,15 +24,7 @@ export function AppShell() {
         <Outlet />
       </main>
 
-      {/* Floating Chatbot Button — fixed bottom-right */}
-      <button
-        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center text-xl transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
-        title="Chat with AI Assistant"
-        onClick={() => window.alert('AI Chatbot coming soon!')}
-        aria-label="Open AI Chatbot"
-      >
-        💬
-      </button>
+      <ChatBot />
     </div>
   );
 }

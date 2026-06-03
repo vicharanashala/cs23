@@ -12,6 +12,8 @@ const healthRouter = require('./routes/health');
 const faqRouter = require('./routes/faq.routes');
 const ticketRouter = require('./routes/ticket.routes');
 const adminRouter = require('./routes/admin.routes');
+const chatRouter = require('./routes/chat.routes');
+const searchRouter = require('./routes/search.routes');
 
 const app = express();
 
@@ -35,6 +37,8 @@ app.use('/api', healthRouter);
 app.use('/api', faqRouter);
 app.use('/api', ticketRouter);
 app.use('/api', adminRouter);
+app.use('/api', chatRouter);
+app.use('/api', searchRouter);
 
 app.get('/api', (req, res) => {
   res.json({ success: true, name: 'FAQ Platform API', version: '0.1.0' });

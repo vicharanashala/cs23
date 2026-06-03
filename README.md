@@ -1,191 +1,221 @@
-# CrowdFAQ — General-Purpose Crowdsourced FAQ Platform
+# CrowdFAQ — Samagama Internship FAQ Platform
 
-> A MERN-stack general-purpose FAQ platform with a 2-tier crowdsourced FAQ system, AI-driven content gap analysis, and an emergency diagnostic tool.
+> **Version 1.0** — A MERN-stack knowledge base for the Samagama Internship program at Vicharanashala Lab, IIT Ropar.
 
----
-
-## 🎯 Overview
-
-**CrowdFAQ** enables communities to browse curated official FAQs and community-contributed questions, submit unique support tickets, and track resolution status — all in one place. Admins manage content quality through a dedicated portal with moderation queues and content gap analytics.
-
-**Live URL:** `https://your-domain.com/faq`
+**Live:** `https://samagama.in` (FAQ section)
 
 ---
 
-## 🛠️ Tech Stack
+## 🤔 What Is This?
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend (Public)** | React 18 + TypeScript, Vite, TailwindCSS, TanStack Router v7, TanStack Query v5, Axios |
-| **Frontend (Admin)** | React 18 + TypeScript, Vite, TanStack Router v1 |
-| **Backend** | Node.js, Express.js |
-| **Database** | MongoDB 8.x |
-| **Authentication** | JWT (admin), session IDs (public upvoting) |
+The **Samagama Internship FAQ Platform** helps prospective and current interns find answers instantly — without waiting for an email reply.
+
+It combines:
+- A **searchable, browsable FAQ knowledge base** with 142 real questions scraped from the program website
+- A **Keyword + AI hybrid search** — type naturally, get precise answers
+- A **community Q&A layer** — users can upvote, rate, and submit new questions
+- An **AI chatbot** that answers internship questions 24/7
+- A **ticket submission + tracking system** for questions that don't have answers yet
+- A full **admin moderation portal** to keep content fresh and accurate
 
 ---
 
 ## ✨ Features
 
-### Public App
+### For Interns & Applicants
 
-- [x] **3-Stage Navigation:** Browse → Submit → Track
-- [x] **2-Tier FAQ System:** Official FAQs (curated) + Community Questions (user-submitted)
-- [x] **Auto-Promotion Pipeline:** Community questions with ≥15 upvotes automatically elevate to Official status
-- [x] **Innovation A — 3-Step Emergency Diagnostic Quiz:** Interactive wizard with 27-path recommendation matrix (focus area → phase → urgency → priority action script)
-- [x] **Innovation B — Debounced Duplicate Submission Blocker:** Real-time similarity search before ticket submission, suggesting existing answers
-- [x] **TF-IDF Auto-Categorization:** Automatically suggests a category for submitted tickets based on description content
-- [x] **Debounced Search:** 300ms debounce on search queries with MongoDB text index
-- [x] **Category Filtering:** Filter by Application Setup, Test & Coding Assessment, Stipend & Offer Letters, Internship Tasks
-- [x] **Upvoting + Star Ratings:** Authenticated via localStorage session ID
-- [x] **Ticket Tracking:** Nanoid-based tracking IDs (`TKT-2026-XXXXXXXX`)
+| Feature | Description |
+|---------|-------------|
+| **🔍 Dual-Mode Search** | 🔤 **Keyword Search** — fast ranked results by relevance. 🤖 **AI Search** — reads the full knowledge base and gives a direct answer with source citations. |
+| **💬 AI Chatbot** | Floating chat button on every page. Handles both casual chat (hi/hello) and RAG-powered FAQ answers from 142 Samagama FAQs. |
+| **📋 Browse FAQs** | Two-panel layout: Official FAQs (curated by admins) + Community Questions (submitted by users). Filter by category. |
+| **📝 Submit Questions** | Submit a support ticket if you can't find an answer. Duplicate detection suggests existing answers before you create a ticket. |
+| **🔔 Track Tickets** | Get a tracking ID on submission. Check resolution status, admin notes, and timeline at any time. |
+| **🔥 Trending** | The most-upvoted question surfaces on the dashboard. |
 
-### Admin Portal
+### For Admins
 
-- [x] **JWT Authentication** with rate-limited login (10 attempts / 15 min per IP)
-- [x] **Ticket Management:** Filter by status (All/Pending/Under Review/Resolved/Closed), update status + admin notes with history tracking
-- [x] **Question Moderation:** Approve → `public_community`, Reject → `rejected`; optional tags on approval
-- [x] **Innovation C — Content Gap Metrics Matrix:** Zero-result search term aggregation + poorly-rated question identification across 7/30/90-day windows
-- [x] **Notification Badges:** Real-time pending counts polled every 30 seconds
+| Feature | Description |
+|---------|-------------|
+| **🔐 JWT-Secured Portal** | Separate admin app at port 5174. Rate-limited login (10 attempts / 15 min per IP). |
+| **🎫 Ticket Queue** | Filter by status (All / Pending / Under Review / Resolved / Closed). Add internal notes. Track resolution history. |
+| **✅ Question Moderation** | Approve community questions (promote to `public_community`) or reject. Tag on approval. |
+| **📊 Content Gap Matrix** | See what people searched for but found no answer for — over 7/30/90 day windows. |
+| **🔔 Notification Badges** | Red badges on nav items show pending tickets + questions count, updated every 30s. |
 
 ---
 
-## 🚀 Setup Instructions
+## 🧱 Architecture
+
+```
+apps/
+├── server/           Express API  —  port 3001
+│   └── src/
+│       ├── config/       # Zod env validation, MongoDB connection
+│       ├── middleware/   # JWT auth, error handler, logger, rate limiter
+│       ├── models/       # Question, Ticket, Rating, SearchLog, Admin
+│       ├── routes/       # FAQ CRUD, ticket, admin, chat, search
+│       └── utils/        # ApiError, TF-IDF categorizer
+│
+├── web/              Public React app  —  port 5173
+│   └── src/
+│       ├── components/   # ChatBot (RAG), UI library (Button, Input, Badge...)
+│       ├── pages/        # MainDashboard, BrowseSearch (dual search), SubmitTicket, TicketTracking
+│       ├── layouts/      # AppShell (sticky header + floating chatbot)
+│       ├── lib/          # Axios client
+│       └── router/       # TanStack Router v7
+│
+└── admin/             Admin React app  —  port 5174
+    └── src/
+        ├── components/   # AdminShell (sidebar + notification polling)
+        ├── pages/        # Login, Dashboard, TicketQueue, QuestionQueue, ContentGaps
+        ├── hooks/        # useAdminAuth
+        └── router/       # TanStack Router v1
+
+samagama-rag-chatbot/    Python RAG pipeline  —  port 8000
+    ├── rag_api.py           # FastAPI — /chat (RAG), /search/keyword, /faqs
+    ├── embed.py             # ChromaDB ingestion from samagama_faq.json
+    ├── scrape_faq.py        # Scrapes samagama.in/internship/faq
+    └── data/
+        ├── samagama_faq.json   # 142 scraped FAQs
+        └── chroma_db/          # Persistent vector store (all-MiniLM-L6-v2)
+```
+
+---
+
+## 🔌 API Reference
+
+### FAQ Endpoints (public)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/faqs` | List FAQs with type, category, search, pagination |
+| `GET` | `/api/faqs/trending` | Most upvoted official FAQ |
+| `GET` | `/api/faqs/search/similar` | Duplicate detection (Innovation B) |
+| `GET` | `/api/faqs/:id` | Single FAQ |
+| `POST` | `/api/faqs/:id/upvote` | Upvote with session ID deduplication |
+| `POST` | `/api/faqs/:id/rate` | Star rating (1–5, upsert) |
+
+### Ticket Endpoints (public)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/tickets` | Submit a support ticket |
+| `GET` | `/api/tickets/:trackingId` | Track ticket by ID |
+
+### Chat & Search (RAG)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/chat` | RAG chat — embeds query → ChromaDB → Gemini → answer |
+| `GET` | `/api/search?q=...&mode=keyword\|ai` | Proxy: keyword → RAG keyword endpoint; ai → RAG chat endpoint |
+
+### Admin Endpoints (protected)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/admin/login` | JWT login (rate-limited) |
+| `GET` | `/api/admin/tickets` | Paginated ticket list with status filter |
+| `PATCH` | `/api/admin/tickets/:id` | Update status + admin note |
+| `GET` | `/api/admin/questions/pending` | Pending community questions |
+| `POST` | `/api/admin/questions/:id/approve` | Approve → public_community |
+| `POST` | `/api/admin/questions/:id/reject` | Reject → rejected |
+| `GET` | `/api/admin/gaps` | Content gap metrics (7/30/90 day) |
+| `GET` | `/api/admin/notifications/count` | Badge counts |
+
+---
+
+## 🚀 Setup
 
 ### Prerequisites
 
 - Node.js 18+
-- MongoDB 8.x (local or Atlas)
+- Python 3.10+ (for RAG pipeline)
+- MongoDB 8.x
 - Git
 
-### 1. Clone the Repository
+### 1. Clone & Install
 
 ```bash
 git clone https://github.com/vicharanashala/cs23
 cd cs23
-```
-
-### 2. Configure Environment Variables
-
-```bash
-# In apps/server/
-cp .env.example .env
-# Edit .env and set MONGODB_URI (e.g. mongodb://localhost:27017/faq-platform)
-```
-
-**Required variables in `apps/server/.env`:**
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `3001` |
-| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/faq-platform` |
-| `JWT_SECRET` | Secret for admin JWT signing | (set your own) |
-| `CLIENT_URL` | CORS origin (public frontend URL) | `http://localhost:5173` |
-| `ADMIN_URL` | Admin portal URL | `http://localhost:5174` |
-
-### 3. Install Dependencies
-
-```bash
 npm install
 ```
 
-### 4. Seed the Database
+### 2. Environment
 
 ```bash
 cd apps/server
-npm run seed
-cd ..
+cp .env.example .env
+# Edit .env — set MONGODB_URI and JWT_SECRET
 ```
 
-This seeds:
-- **8 Official FAQs** (general-purpose template questions)
-- **6 Community Questions** in various states
-- **1 Admin account:** `admin` / `admin123` (change in production)
+**Required variables:**
 
-### 5. Start Development Servers
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `PORT` | `3001` | Server port |
+| `MONGODB_URI` | `mongodb://localhost:27017/faq-platform` | |
+| `JWT_SECRET` | — | **Set your own** |
+| `CLIENT_URL` | `http://localhost:5173` | |
+| `ADMIN_URL` | `http://localhost:5174` | |
+| `RAG_API_URL` | `http://localhost:8000` | RAG chatbot backend |
+
+### 3. Start MongoDB
 
 ```bash
-# Start server (port 3001) + public web (port 5173) concurrently
-npm run dev
-
-# Or start all 3 apps: server + web + admin portal
-npm run dev:all
+mongod --dbpath "C:\Program Files\MongoDB\Server\8.3\data"
 ```
 
-| App | URL |
-|-----|-----|
+### 4. Seed Data
+
+```bash
+cd apps/server && npm run seed
+```
+
+Seeds 8 Official FAQs + 6 Community Questions + 1 admin account (`admin` / `admin123`).
+
+### 5. Start All Services
+
+```bash
+# Terminal 1 — API server
+cd apps/server && node src/index.js
+
+# Terminal 2 — Public frontend
+cd apps/web && npm run dev
+
+# Terminal 3 — Admin portal
+cd apps/admin && npm run dev
+
+# Terminal 4 — RAG chatbot (Python)
+cd samagama-rag-chatbot
+.venv\Scripts\python.exe -m uvicorn rag_api:app --port 8000 --reload
+```
+
+### Service URLs
+
+| Service | URL |
+|---------|-----|
 | Public Frontend | http://localhost:5173 |
 | Admin Portal | http://localhost:5174 |
 | API Server | http://localhost:3001 |
-| Health Check | http://localhost:3001/api/health |
-
-### Admin Portal Login
-
-- **URL:** http://localhost:5174
-- **Username:** `admin`
-- **Password:** `admin123` *(change this in production)*
+| RAG Chat API | http://localhost:8000 |
 
 ---
 
-## 📐 Architecture Overview
+## 🧪 Tech Stack
 
-Full architecture documentation is available in `docs/architecture/`:
-
-| Document | Contents |
-|----------|----------|
-| `01-project-architecture.md` | System overview, security model, deployment, tech choices |
-| `02-folder-structure.md` | Full monorepo directory tree |
-| `03-database-schema.md` | 9 MongoDB collections with field definitions and indexes |
-| `04-api-endpoints.md` | All 20+ API endpoints with request/response shapes |
-
----
-
-## 📸 Screenshots
-
-Screenshots coming soon.
+| Layer | Technology |
+|-------|-----------|
+| **Public Frontend** | React 18 + TypeScript, Vite, TailwindCSS, TanStack Router v7, TanStack Query v5 |
+| **Admin Frontend** | React 18 + TypeScript, Vite, TanStack Router v1 |
+| **Backend API** | Node.js + Express.js |
+| **RAG Pipeline** | Python + FastAPI + ChromaDB + SentenceTransformers + Google Gemini |
+| **Database** | MongoDB 8.x |
+| **Auth** | JWT (admin), localStorage session IDs (public) |
 
 ---
 
-## 📁 Project Structure
+## 📄 License
 
-```
-cs23/
-├── apps/
-│   ├── server/          # Express API server (port 3001)
-│   │   └── src/
-│   │       ├── config/      # env.js, db.js
-│   │       ├── middleware/  # auth.js, errorHandler.js, logger.js, validate.js
-│   │       ├── models/      # Question, Ticket, Rating, SearchLog, Admin
-│   │       ├── routes/      # faq.routes.js, ticket.routes.js, admin.routes.js
-│   │       ├── scripts/     # seed.js
-│   │       └── utils/       # ApiError.js, tfidf.js
-│   ├── web/             # Public React app (port 5173)
-│   │   └── src/
-│   │       ├── components/  # ui/ (Button, Input, Badge, Card, Spinner, Accordion)
-│   │       ├── hooks/       # useDebounce.ts
-│   │       ├── layouts/     # AppShell.tsx
-│   │       ├── lib/         # api.ts (Axios)
-│   │       ├── pages/       # MainDashboard, BrowseSearch, SubmitTicket, TicketTracking
-│   │       └── router/      # TanStack Router
-│   └── admin/            # Admin React app (port 5174)
-│       └── src/
-│           ├── components/  # AdminShell.tsx
-│           ├── hooks/       # useAdminAuth.ts
-│           ├── lib/         # api.ts
-│           ├── pages/       # AdminLogin, AdminDashboard, TicketQueue, QuestionQueue, ContentGaps
-│           └── router/      # TanStack Router
-├── docs/
-│   ├── architecture/    # 01–04 architecture documents
-│   └── sprints/         # Sprint reports (sprint-07 through sprint-18)
-└── package.json         # Root scripts: dev, dev:all, build, seed
-```
-
----
-
-## 🔒 Security Notes
-
-- Admin passwords hashed with **bcryptjs** (12 salt rounds)
-- JWT tokens for admin auth (8h expiry)
-- Rate limiting on login route: **10 attempts / 15 min per IP**
-- CORS restricted to configured `CLIENT_URL` and `ADMIN_URL`
-- Admin routes protected by `verifyAdmin` middleware on all 8 endpoints
-- No secrets in source code — all from environment variables
+MIT — Vicharanashala Lab, IIT Ropar.
