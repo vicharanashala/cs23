@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -21,7 +21,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   // Apply dark class to <html> and persist
-  const apply = (t: Theme) => {
+  const apply = useCallback((t: Theme) => {
     if (t === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
@@ -29,13 +29,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     localStorage.setItem(STORAGE_KEY, t);
     setTheme(t);
-  };
+  }, []);
 
-  useEffect(() => {
-    apply(theme);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const toggle = () => apply(theme === 'dark' ? 'light' : 'dark');
+  const toggle = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      apply(next);
+      return next;
+    });
+  }, [apply]);
 
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>

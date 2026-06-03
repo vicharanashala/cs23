@@ -8,11 +8,8 @@ const api = axios.create({
   },
 });
 
-// Inject the session ID on every request
-api.interceptors.request.use((config) => {
-  config.headers['X-Session-Id'] = getSessionId();
-  return config;
-});
+// Inject the session ID header on every request — set once here so it always goes out
+api.defaults.headers.common['X-Session-Id'] = getSessionId();
 
 // Response interceptor — surface API error messages clearly
 api.interceptors.response.use(
