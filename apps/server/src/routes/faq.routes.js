@@ -3,6 +3,7 @@ const Question = require('../models/Question');
 const Rating = require('../models/Rating');
 const SearchLog = require('../models/SearchLog');
 const ApiError = require('../utils/ApiError');
+const { searchFaqs } = require('../utils/bm25');
 
 const router = express.Router();
 
@@ -16,58 +17,53 @@ const router = express.Router();
 router.get('/faqs', async (req, res) => {
   const { category, search, type = 'official', page = 1, limit = 20 } = req.query;
 
-  const query = {};
+  const filter = {};
 
   // Category filter
   if (category) {
-    query.category = category;
+    filter.category = category;
   }
 
   // Type filter → status values
   if (type === 'official') {
-    query.status = 'official_faq';
+    filter.status = 'official_faq';
   } else if (type === 'community') {
-    query.status = 'public_community';
+    filter.status = 'public_community';
   }
   // 'all' → no status filter
-
-  // Text search on title + description (when search term >= 3 chars)
-  if (search && search.trim().length >= 3) {
-    query.$text = { $search: search.trim() };
-  }
 
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
   const skip = (pageNum - 1) * limitNum;
 
-  const [faqs, total] = await Promise.all([
-    Question.find(query)
-      .sort(search && search.trim().length >= 3 ? { score: { $meta: 'textScore' } } : { createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum)
-      .lean(),
-    Question.countDocuments(query),
-  ]);
+  let faqs;
+  let total;
 
-  // Enrich with textScore when searching
-  const enriched = faqs.map((faq) => {
-    if (search && search.trim().length >= 3) {
-      return { ...faq, score: faq.score };
-    }
-    return faq;
-  });
-
-  // Log zero-result searches for Innovation C (content gaps)
+  // BM25 ranking when search term present (length >= 3)
   if (search && search.trim().length >= 3) {
+    const trimmed = search.trim();
+    const result = await searchFaqs(trimmed, filter, { limit: limitNum, skip });
+    faqs = result.faqs;
+    total = result.total;
+
+    // Log searches for content gap analysis
     await SearchLog.create({
-      query: search.trim(),
+      query: trimmed,
       resultsCount: total,
       sessionId: req.headers['x-session-id'] || null,
     });
+  } else {
+    // Normal paginated listing — no ranking needed
+    faqs = await Question.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+    total = await Question.countDocuments(filter);
   }
 
   res.json({
-    faqs: enriched,
+    faqs,
     total,
     page: pageNum,
     totalPages: Math.ceil(total / limitNum),
@@ -138,6 +134,25 @@ router.get('/faqs/:id', async (req, res) => {
     throw new ApiError(404, 'FAQ not found');
   }
   res.json(faq);
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/faqs/mine
+// Query: sessionId — returns submitted questions and upvoted questions for that user.
+// ----------------------------------------------------------------------------
+router.get('/faqs/mine', async (req, res) => {
+  const { sessionId } = req.query;
+
+  if (!sessionId) {
+    throw new ApiError(400, 'sessionId is required');
+  }
+
+  const [submitted, upvotedQuestions] = await Promise.all([
+    Question.find({ createdBy: sessionId }).sort({ createdAt: -1 }).lean(),
+    Question.find({ upvotedBy: sessionId }).sort({ upvotes: -1 }).lean(),
+  ]);
+
+  res.json({ submitted, upvotedQuestions });
 });
 
 // ---------------------------------------------------------------------------
