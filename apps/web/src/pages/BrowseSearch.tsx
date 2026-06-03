@@ -9,6 +9,7 @@ import { Card, CardBody } from '../components/ui/Card';
 import { Accordion } from '../components/ui/Accordion';
 import { Spinner } from '../components/ui/Spinner';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { FAQJsonLd } from '../components/JsonLd';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -433,6 +434,7 @@ function EmptyState({ onNavigate }: { onNavigate: (path: string) => void }) {
 export default function BrowseSearch() {
   return (
     <ErrorBoundary>
+      <FAQJsonLd />
       <BrowseSearchInner />
     </ErrorBoundary>
   );

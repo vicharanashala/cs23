@@ -5,7 +5,6 @@ import { Spinner } from './ui/Spinner';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  sources?: { question: string; answer: string; score: number }[];
 }
 
 // ─── Casual response matcher ─────────────────────────────────────────────────
@@ -29,21 +28,17 @@ function getCasualResponse(text: string): string | null {
   return null;
 }
 
-// ─── Chat function ────────────────────────────────────────────────────────────
-
-async function getChatResponse(message: string): Promise<{ answer: string; sources?: { question: string; answer: string; score: number }[] }> {
-  // Try AI chat endpoint first (RAG)
+async function getChatResponse(message: string) {
   try {
-    const res = await api.post<{ answer: string; context?: string[] }>('/search?q=' + encodeURIComponent(message) + '&mode=ai', {});
+    const res = await api.post<{ answer: string }>('/search?q=' + encodeURIComponent(message) + '&mode=ai', {});
     return { answer: res.data.answer };
   } catch {
-    // Fall back to chat endpoint
     const res = await api.post<{ answer: string }>('/chat', { message });
     return { answer: res.data.answer };
   }
 }
 
-// ─── ChatBot Component ─────────────────────────────────────────────────────────
+// ─── ChatBot ─────────────────────────────────────────────────────────────────
 
 export function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,25 +48,16 @@ export function ChatBot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [isOpen]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => { if (isOpen) setTimeout(() => inputRef.current?.focus(), 100); }, [isOpen]);
 
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || isLoading) return;
 
-    // Immediate casual response for greetings
     const casual = getCasualResponse(text);
     if (casual && !text.endsWith('?')) {
-      const userMsg: Message = { role: 'user', content: text };
-      setMessages(prev => [...prev, userMsg, { role: 'assistant', content: casual }]);
+      setMessages(prev => [...prev, { role: 'user', content: text }, { role: 'assistant', content: casual }]);
       setInput('');
       return;
     }
@@ -85,25 +71,15 @@ export function ChatBot() {
       const { answer } = await getChatResponse(text);
       setMessages(prev => [...prev, { role: 'assistant', content: answer }]);
     } catch {
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: "Sorry, I'm having trouble answering that right now. Please try again." },
-      ]);
+      setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I'm having trouble answering that right now. Please try again." }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
   return (
     <>
-      {/* ── Floating Toggle Button ── */}
+      {/* Toggle */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -114,14 +90,12 @@ export function ChatBot() {
         </button>
       )}
 
-      {/* ── Chat Panel ── */}
       {isOpen && (
-        <div
-          className="fixed bottom-6 right-6 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl flex flex-col z-50 border border-gray-200"
-          style={{ height: '580px', maxHeight: 'calc(100vh - 8rem)' }}
-        >
+        <div className="fixed bottom-6 right-6 w-96 max-w-[calc(100vw-2rem)] bg-white dark:bg-dark-surface rounded-2xl shadow-2xl flex flex-col z-50 border border-gray-200 dark:border-dark-border"
+          style={{ height: '580px', maxHeight: 'calc(100vh - 8rem)' }}>
+
           {/* Header */}
-          <div className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between flex-shrink-0 rounded-t-2xl">
+          <div className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-3 flex items-center justify-between flex-shrink-0 rounded-t-2xl">
             <div className="flex items-center gap-2">
               <span className="text-lg">🤖</span>
               <div>
@@ -129,71 +103,62 @@ export function ChatBot() {
                 <div className="text-xs text-blue-100 opacity-80">Chat or ask about the internship</div>
               </div>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-blue-200 transition-colors text-lg"
-              aria-label="Close chat"
-            >
-              ✕
-            </button>
+            <button onClick={() => setIsOpen(false)} className="text-white hover:text-blue-200 transition-colors text-lg" aria-label="Close chat">✕</button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-50 dark:bg-dark-bg">
             {messages.length === 0 && (
-              <div className="text-center text-gray-400 text-sm mt-16">
+              <div className="text-center text-gray-400 dark:text-dark-muted text-sm mt-16">
                 <div className="text-3xl mb-2">👋</div>
-                <p>Hi! Say hi, ask a question, or just<br />chat — I'm here for both! 😊</p>
+                <p>Say hi or ask anything!<br />I'm here for both casual chat and<br />internship questions. 😊</p>
               </div>
             )}
-
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
                   msg.role === 'user'
                     ? 'bg-blue-600 text-white rounded-br-md'
-                    : 'bg-gray-100 text-gray-800 rounded-bl-md'
+                    : 'bg-white dark:bg-dark-surface text-gray-800 dark:text-dark-text border border-gray-100 dark:border-dark-border rounded-bl-md'
                 }`}>
                   {msg.content}
                 </div>
               </div>
             ))}
-
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+                <div className="bg-gray-100 dark:bg-dark-border rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <Spinner size="sm" />
-                    <span className="text-xs text-gray-500">Thinking...</span>
+                    <span className="text-xs text-gray-500 dark:text-dark-muted">Thinking...</span>
                   </div>
                 </div>
               </div>
             )}
-
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}
-          <div className="border-t border-gray-200 px-4 py-3 flex-shrink-0 rounded-b-2xl">
+          <div className="border-t border-gray-200 dark:border-dark-border px-4 py-3 flex-shrink-0 bg-white dark:bg-dark-surface rounded-b-2xl">
             <div className="flex gap-2 items-end">
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKey}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                 placeholder="Say hi or ask a question..."
                 rows={1}
-                className="flex-1 resize-none rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-24 overflow-y-auto"
+                className="flex-1 resize-none rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-muted px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 max-h-24 overflow-y-auto"
               />
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || isLoading}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-4 py-2 text-sm font-medium transition-colors flex-shrink-0"
+                className="bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-4 py-2 text-sm font-medium transition-colors flex-shrink-0"
               >
                 Send
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">Enter to send · Shift+Enter for new line</p>
+            <p className="text-xs text-gray-400 dark:text-dark-muted mt-1.5">Enter to send · Shift+Enter for new line</p>
           </div>
         </div>
       )}

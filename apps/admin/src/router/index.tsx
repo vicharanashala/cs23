@@ -10,6 +10,7 @@ import AdminDashboard from '../pages/AdminDashboard';
 import TicketQueue from '../pages/TicketQueue';
 import QuestionQueue from '../pages/QuestionQueue';
 import ContentGaps from '../pages/ContentGaps';
+import SearchAnalytics from '../pages/SearchAnalytics';
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ const questionsRoute = new Route({
 const gapsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/gaps',
-  component: () => <AdminLayout><ContentGaps /></AdminLayout>,
+  component: () => <AdminLayout><SearchAnalytics /></AdminLayout>,
 });
 
 // ─── Build tree ───────────────────────────────────────────────────────────────

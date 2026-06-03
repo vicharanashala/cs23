@@ -137,14 +137,40 @@ router.get('/faqs/:id', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// POST /api/faqs — submit a community question
+// Body: { title, description, category }
+// Sets createdBy from X-Session-ID header
+// ---------------------------------------------------------------------------
+
+router.post('/faqs', async (req, res) => {
+  const { title, description, category } = req.body || {};
+  const sessionId = req.headers['x-session-id'] || null;
+
+  if (!title || !description || !category) {
+    throw new ApiError(400, 'title, description, and category are required');
+  }
+
+  const faq = await Question.create({
+    title,
+    description,
+    category,
+    status: 'pending',
+    createdBy: sessionId,
+  });
+
+  res.status(201).json(faq);
+});
+
+// ---------------------------------------------------------------------------
 // GET /api/faqs/mine
-// Query: sessionId — returns submitted questions and upvoted questions for that user.
-// ----------------------------------------------------------------------------
+// Header: X-Session-ID — returns submitted questions and upvoted questions for that user.
+// Returns: { submitted: Faq[], upvotedQuestions: Faq[] }
+// ---------------------------------------------------------------------------
 router.get('/faqs/mine', async (req, res) => {
-  const { sessionId } = req.query;
+  const sessionId = req.headers['x-session-id'];
 
   if (!sessionId) {
-    throw new ApiError(400, 'sessionId is required');
+    throw new ApiError(400, 'X-Session-ID header is required');
   }
 
   const [submitted, upvotedQuestions] = await Promise.all([

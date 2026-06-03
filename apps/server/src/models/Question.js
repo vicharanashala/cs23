@@ -82,6 +82,11 @@ const QuestionSchema = new mongoose.Schema(
       },
     ],
 
+    createdBy: {
+      type: String,
+      index: true,
+    },
+
     ticketId: {
       type: String,
       unique: true,

@@ -10,6 +10,7 @@ import MainDashboard from '../pages/MainDashboard';
 import BrowseSearch from '../pages/BrowseSearch';
 import SubmitTicket from '../pages/SubmitTicket';
 import TicketTracking from '../pages/TicketTracking';
+import MyQuestions from '../pages/MyQuestions';
 
 // Root route with AppShell layout
 const rootRoute = new RootRoute({
@@ -41,11 +42,18 @@ const trackRoute = new Route({
   component: TicketTracking,
 });
 
+const myQuestionsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/my-questions',
+  component: MyQuestions,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   browseRoute,
   submitRoute,
   trackRoute,
+  myQuestionsRoute,
 ]);
 
 export const router = new Router({ routeTree });

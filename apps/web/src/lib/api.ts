@@ -1,10 +1,17 @@
 import axios from 'axios';
+import { getSessionId } from './session';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Inject the session ID on every request
+api.interceptors.request.use((config) => {
+  config.headers['X-Session-Id'] = getSessionId();
+  return config;
 });
 
 // Response interceptor — surface API error messages clearly

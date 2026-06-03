@@ -17,7 +17,7 @@ export function Accordion({ items, allowMultiple = false, className = '' }: Acco
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) => {
-    setOpenIds((prev) => {
+    setOpenIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
@@ -31,7 +31,7 @@ export function Accordion({ items, allowMultiple = false, className = '' }: Acco
 
   return (
     <div className={`space-y-2 ${className}`}>
-      {items.map((item) => {
+      {items.map(item => {
         const isOpen = openIds.has(item.id);
         return (
           <Card key={item.id} className="overflow-hidden" hoverable>
@@ -40,14 +40,11 @@ export function Accordion({ items, allowMultiple = false, className = '' }: Acco
               onClick={() => toggle(item.id)}
               aria-expanded={isOpen}
               aria-controls={`accordion-body-${item.id}`}
-              aria-label={`${isOpen ? 'Collapse' : 'Expand'}: ${item.title}`}
             >
-              <span className="font-medium text-gray-900 text-sm">{item.title}</span>
+              <span className="font-medium text-gray-900 dark:text-dark-text text-sm">{item.title}</span>
               <svg
-                className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+                className={`w-4 h-4 text-gray-400 dark:text-dark-muted flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
@@ -56,7 +53,7 @@ export function Accordion({ items, allowMultiple = false, className = '' }: Acco
             {isOpen && (
               <div
                 id={`accordion-body-${item.id}`}
-                className="px-5 pb-5 text-sm text-gray-600 border-t border-gray-100 pt-3"
+                className="px-5 pb-5 text-sm text-gray-600 dark:text-dark-muted border-t border-gray-100 dark:border-dark-border pt-3"
               >
                 {item.body}
               </div>

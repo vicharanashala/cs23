@@ -11,8 +11,8 @@ export function Card({ children, className = '', onClick, hoverable = false }: C
   return (
     <div
       className={`
-        bg-white rounded-xl border border-gray-200 shadow-sm
-        ${hoverable ? 'hover:shadow-md hover:border-blue-200 cursor-pointer transition-all' : ''}
+        bg-white dark:bg-dark-surface rounded-xl border border-gray-200 dark:border-dark-border shadow-sm
+        ${hoverable ? 'hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700 cursor-pointer transition-all' : ''}
         ${className}
       `}
       onClick={onClick}

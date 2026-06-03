@@ -217,6 +217,71 @@ router.get('/admin/content-gaps', verifyAdmin, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/admin/search-analytics — protected (Innovation A)
+// Query: period (7d | 30d | 90d, default 30d)
+// Returns top queries, zero-result queries, and daily volume for the period
+// ---------------------------------------------------------------------------
+router.get('/admin/search-analytics', verifyAdmin, async (req, res) => {
+  const period = req.query.period || '30d';
+  const days = period === '7d' ? 7 : period === '90d' ? 90 : 30;
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  // Top queries: group by lowercase trimmed query, sort by count desc
+  const topQueriesAgg = await SearchLog.aggregate([
+    { $match: { createdAt: { $gte: since } } },
+    {
+      $group: {
+        _id: { $toLower: { $trim: { input: '$query' } } },
+        count: { $sum: 1 },
+        avgResults: { $avg: '$resultsCount' },
+        lastSearched: { $max: '$createdAt' },
+      },
+    },
+    { $sort: { count: -1 } },
+    { $limit: 20 },
+    {
+      $project: {
+        _id: 0,
+        query: '$_id',
+        count: 1,
+        avgResults: { $round: ['$avgResults', 1] },
+        lastSearched: 1,
+      },
+    },
+  ]);
+
+  // Zero-result queries: where resultsCount === 0
+  const zeroResultAgg = await SearchLog.aggregate([
+    { $match: { createdAt: { $gte: since }, resultsCount: 0 } },
+    { $group: { _id: { $toLower: { $trim: { input: '$query' } } }, count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 50 },
+    { $project: { _id: 0, query: '$_id', count: 1 } },
+  ]);
+
+  // Volume over time: group by day
+  const volumeAgg = await SearchLog.aggregate([
+    { $match: { createdAt: { $gte: since } } },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+    { $project: { _id: 0, date: '$_id', count: 1 } },
+  ]);
+
+  res.json({
+    topQueries: topQueriesAgg,
+    zeroResultQueries: zeroResultAgg,
+    volumeOverTime: volumeAgg,
+  });
+});
+
+// ---------------------------------------------------------------------------
 // GET /api/admin/notifications/count — protected
 // Returns badge counts for pending tickets + questions
 // ---------------------------------------------------------------------------
