@@ -10,9 +10,10 @@ const TicketSchema = new mongoose.Schema(
 
     submitterEmail: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
       lowercase: true,
+      default: null,
     },
 
     category: {
@@ -47,6 +48,11 @@ const TicketSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Question',
       default: null,
+    },
+
+    createdBy: {
+      type: String,
+      index: true,
     },
 
     history: {

@@ -7,7 +7,7 @@ type TicketStatus = 'pending' | 'under_review' | 'resolved' | 'closed';
 interface Ticket {
   _id: string;
   trackingId: string;
-  email: string;
+  submitterEmail: string | null;
   category: string;
   description: string;
   status: TicketStatus;
@@ -70,7 +70,15 @@ export default function TicketQueue() {
     queryFn: () =>
       api
         .get<{ tickets: Ticket[]; total: number; page: number; totalPages: number }>(`/admin/tickets?${queryParams}`)
-        .then((r) => r.data as { tickets: Ticket[]; total: number; page: number; totalPages: number }),
+        .then((r) => {
+          const d = r.data as { tickets: Ticket[]; total: number; page: number; totalPages: number };
+          // Normalize: admin API may still return email — promote it to submitterEmail
+          d.tickets = d.tickets.map((t) => ({
+            ...t,
+            submitterEmail: t.submitterEmail ?? (t as any).email ?? null,
+          }));
+          return d;
+        }),
     staleTime: 30_000,
   });
 
@@ -171,7 +179,13 @@ export default function TicketQueue() {
                     <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-800">
                       {ticket.trackingId}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">{ticket.email}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">
+                      {ticket.submitterEmail ? (
+                        <span>📧 {ticket.submitterEmail}</span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-gray-600 text-xs">{ticket.category}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[ticket.status]}`} aria-label={`Status: ${STATUS_LABELS[ticket.status]}`}>
@@ -231,7 +245,7 @@ export default function TicketQueue() {
                 Review: {selected.trackingId}
               </h3>
               <p className="text-xs text-gray-500 mt-0.5">
-                {selected.email} · {selected.category}
+                {selected.submitterEmail ? `📧 ${selected.submitterEmail} · ` : ''}{selected.category}
               </p>
             </div>
             <button

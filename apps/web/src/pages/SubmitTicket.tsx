@@ -21,7 +21,11 @@ const CATEGORIES = [
 ] as const;
 
 const schema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  submitterEmail: z
+    .string()
+    .email('Please enter a valid email address')
+    .optional()
+    .or(z.literal('')),
   category: z.enum(CATEGORIES, {
     errorMap: () => ({ message: 'Please select a category' }),
   }),
@@ -280,8 +284,11 @@ function SubmitTicketInner() {
 
   // ── Submit Mutation ───────────────────────────────────────────────────────
   const submitMutation = useMutation({
-    mutationFn: (data: FormValues) =>
-      api.post<{ trackingId: string; suggestedCategory?: string | null }>('/tickets', data),
+    mutationFn: (data: FormValues) => {
+      const body = { ...data };
+      if (!body.submitterEmail) delete body.submitterEmail;
+      return api.post<{ trackingId: string; suggestedCategory?: string | null }>('/tickets', body);
+    },
     onSuccess: (response) => {
       const { trackingId = '', suggestedCategory = null } = response.data ?? {};
       setSubmittedTrackingId(trackingId);
@@ -342,24 +349,26 @@ function SubmitTicketInner() {
         {/* Email */}
         <div>
           <label
-            htmlFor="email"
+            htmlFor="submitterEmail"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            Email address <span className="text-red-500">*</span>
+            Your email address (optional)
           </label>
           <input
-            id="email"
+            id="submitterEmail"
             type="email"
             autoComplete="email"
-            {...register('email')}
-            aria-invalid={!!errors.email}
-            className={`w-full px-3 py-2 rounded-lg border text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              errors.email ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'
+            {...register('submitterEmail')}
+            aria-invalid={!!errors.submitterEmail}
+            className={`w-full px-3 py-2 rounded-lg border text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-dark-surface dark:border-dark-border dark:text-dark-text ${
+              errors.submitterEmail ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'
             }`}
             placeholder="your@email.com"
           />
-          {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+          {errors.submitterEmail ? (
+            <p className="mt-1 text-sm text-red-600">{errors.submitterEmail.message}</p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-400">Leave blank if you don't want us to contact you directly</p>
           )}
         </div>
 

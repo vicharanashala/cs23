@@ -18,7 +18,7 @@ const CATEGORIES = [
 ];
 
 const SubmitTicketSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  submitterEmail: z.string().trim().lowercase().optional(),
   category: z.string().refine((v) => CATEGORIES.includes(v), {
     message: `category must be one of: ${CATEGORIES.join(', ')}`,
   }),
@@ -40,7 +40,7 @@ router.post('/tickets', async (req, res) => {
     });
   }
 
-  const { email, category, description } = parsed.data;
+  const { submitterEmail, category, description } = parsed.data;
 
   // Build a human-readable subject from description (first 60 chars)
   const subject = description.length > 60 ? description.slice(0, 60) + '…' : description;
@@ -50,16 +50,17 @@ router.post('/tickets', async (req, res) => {
   const suffix = nanoid(8).toUpperCase();
   const trackingId = `TKT-${year}-${suffix}`;
 
-  // TF-IDF auto-categorization (based on email + description text)
-  const suggestedCategory = categorize(`${email} ${description}`);
+  // TF-IDF auto-categorization (based on description text)
+  const suggestedCategory = categorize(description);
 
   const ticket = await Ticket.create({
     trackingId,
-    submitterEmail: email,
+    submitterEmail: submitterEmail || null,
     category,
     description,
     status: 'pending',
-    history: [{ status: 'pending', changedAt: new Date(), note: 'Submitted' }],
+    history: [{ status: 'pending', changedAt: new Date(), note: submitterEmail ? `Submitted by ${submitterEmail}` : 'Submitted' }],
+    createdBy: req.headers['x-session-id'] || null,
   });
 
   const response = {
@@ -92,6 +93,7 @@ router.get('/tickets/:trackingId', async (req, res) => {
     status: ticket.status,
     category: ticket.category,
     description: ticket.description,
+    submitterEmail: ticket.submitterEmail,
     adminNote: ticket.adminNote,
     history: ticket.history,
     createdAt: ticket.createdAt,
