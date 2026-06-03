@@ -1,14 +1,15 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
+import { getSessionId } from '../lib/session';
 import { Card, CardBody } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Spinner } from '../components/ui/Spinner';
+import { ReputationBadge } from '../components/ReputationBadge';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type QuestionStatus = 'official_faq' | 'public_community' | 'pending' | 'rejected';
+type QuestionStatus = 'pending' | 'public_community' | 'official_faq' | 'rejected';
 
 interface Question {
   _id: string;
@@ -17,6 +18,7 @@ interface Question {
   category: string;
   status: QuestionStatus;
   upvotes: number;
+  isOfficialFAQ: boolean;
   createdAt: string;
 }
 
@@ -25,220 +27,288 @@ interface MineResponse {
   upvotedQuestions: Question[];
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Point values ─────────────────────────────────────────────────────────────
 
-function getSessionId(): string | null {
-  return localStorage.getItem('faq_session_id');
+const POINTS = {
+  submitQuestion:   5,
+  getUpvote:       10,
+  questionPromoted: 50,
+} as const;
+
+// ─── Badge tier definition ────────────────────────────────────────────────────
+
+export type BadgeTier = 'beginner' | 'intermediate' | 'advanced' | 'champion';
+
+interface BadgeDef {
+  tier: BadgeTier;
+  emoji: string;
+  label: string;
+  check: (stats: UserStats) => boolean;
 }
 
-function statusVariant(status: QuestionStatus): 'official' | 'community' | 'pending' | 'rejected' {
-  switch (status) {
-    case 'official_faq':    return 'official';
-    case 'public_community': return 'community';
-    case 'pending':         return 'pending';
-    case 'rejected':        return 'rejected';
-    default:                return 'pending';
-  }
+interface UserStats {
+  submittedCount: number;
+  totalUpvotes: number;
+  promotedCount: number;
+}
+
+const BADGE_DEFS: BadgeDef[] = [
+  { tier: 'beginner',    emoji: '🌱', label: 'First Question',  check: (s) => s.submittedCount >= 1 },
+  { tier: 'intermediate',emoji: '⭐', label: 'Rising Star',     check: (s) => s.totalUpvotes >= 3  },
+  { tier: 'advanced',    emoji: '🔥', label: 'Top Contributor', check: (s) => s.totalUpvotes >= 5  },
+  { tier: 'champion',    emoji: '🏆', label: 'Champion',        check: (s) => s.promotedCount >= 1 },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function computeReputation(submitted: Question[], upvotedQuestions: Question[]): number {
+  const submitPoints  = submitted.length * POINTS.submitQuestion;
+  const upvotePoints  = upvotedQuestions.reduce((sum, q) => sum + q.upvotes, 0) * POINTS.getUpvote;
+  const promotedCount = submitted.filter((q) => q.status === 'official_faq').length;
+  const promotePoints = promotedCount * POINTS.questionPromoted;
+  return submitPoints + upvotePoints + promotePoints;
+}
+
+function computeStats(submitted: Question[], upvotedQuestions: Question[]): UserStats {
+  const promotedCount = submitted.filter((q) => q.status === 'official_faq').length;
+  return {
+    submittedCount: submitted.length,
+    totalUpvotes:   upvotedQuestions.reduce((sum, q) => sum + q.upvotes, 0),
+    promotedCount,
+  };
+}
+
+function relativeTime(dateStr: string): string {
+  const diff  = Date.now() - new Date(dateStr).getTime();
+  const mins  = Math.floor(diff / 60_000);
+  const hrs   = Math.floor(diff / 3_600_000);
+  const days  = Math.floor(diff / 86_400_000);
+  if (mins < 1)  return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hrs  < 24) return `${hrs}h ago`;
+  return `${days}d ago`;
+}
+
+function statusVariant(status: QuestionStatus): 'pending' | 'official' | 'community' | 'rejected' {
+  const map: Record<QuestionStatus, ReturnType<typeof statusVariant>> = {
+    pending:          'pending',
+    public_community: 'community',
+    official_faq:     'official',
+    rejected:         'rejected',
+  };
+  return map[status] ?? 'pending';
 }
 
 function statusLabel(status: QuestionStatus): string {
-  switch (status) {
-    case 'official_faq':     return 'Official FAQ';
-    case 'public_community': return 'Community';
-    case 'pending':          return 'Pending';
-    case 'rejected':         return 'Rejected';
-    default:                 return status;
-  }
+  const map: Record<QuestionStatus, string> = {
+    pending:          'Pending',
+    public_community: 'Community',
+    official_faq:     'Official FAQ',
+    rejected:         'Rejected',
+  };
+  return map[status] ?? status;
 }
 
-function categoryIcon(category: string): string {
-  switch (category) {
-    case 'Application Setup':        return '⚙️';
-    case 'Test & Coding Assessment': return '💻';
-    case 'Stipend & Offer Letters':  return '💰';
-    case 'Internship Tasks':         return '📋';
-    default:                         return '❓';
-  }
+function categoryIcon(cat: string): string {
+  const map: Record<string, string> = {
+    'Application Setup':        '⚙️',
+    'Test & Coding Assessment': '💻',
+    'Stipend & Offer Letters':  '💰',
+    'Internship Tasks':         '📋',
+  };
+  return map[cat] ?? '❓';
 }
 
-// ─── Question Card ────────────────────────────────────────────────────────────
+// ─── Reputation Header ────────────────────────────────────────────────────────
 
-function QuestionCard({ question }: { question: Question }) {
+function ReputationHeader({ reputation, stats }: { reputation: number; stats: UserStats }) {
+  const earnedBadges = BADGE_DEFS.filter((b) => b.check(stats));
+
   return (
-    <Card className="dark:bg-dark-surface dark:border-dark-border hover:shadow-md transition-shadow">
-      <CardBody className="space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-semibold text-gray-900 dark:text-dark-text leading-snug line-clamp-2">
-            {question.title}
-          </h3>
-          <span className="text-xl flex-shrink-0" title={question.category}>
-            {categoryIcon(question.category)}
-          </span>
+    <Card className="border-gray-200 dark:border-dark-border bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-dark-surface dark:to-dark-surface mb-6">
+      <CardBody className="space-y-4">
+        {/* Reputation score */}
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">🎯</span>
+          <div>
+            <p className="text-sm text-gray-500 dark:text-dark-muted font-medium">Your Reputation</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-dark-text">
+              {reputation.toLocaleString()} <span className="text-base font-normal text-gray-400">points</span>
+            </p>
+          </div>
         </div>
 
-        <p className="text-sm text-gray-600 dark:text-dark-text/70 line-clamp-2">
-          {question.description}
-        </p>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="community" className="text-xs">
-            {question.category}
-          </Badge>
-          <Badge variant={statusVariant(question.status)} className="text-xs">
-            {statusLabel(question.status)}
-          </Badge>
-          <span className="ml-auto flex items-center gap-1 text-sm text-gray-500 dark:text-dark-text/60">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M5 15l7-7 7 7" />
-            </svg>
-            {question.upvotes}
-          </span>
+        {/* Stats row */}
+        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-dark-muted">
+          <span>📝 <strong className="text-gray-900 dark:text-dark-text">{stats.submittedCount}</strong> submitted</span>
+          <span>👍 <strong className="text-gray-900 dark:text-dark-text">{stats.totalUpvotes}</strong> upvotes received</span>
+          <span>🏆 <strong className="text-gray-900 dark:text-dark-text">{stats.promotedCount}</strong> promoted</span>
         </div>
+
+        {/* Earned badges */}
+        {earnedBadges.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-400 font-medium">Badges earned:</span>
+            {BADGE_DEFS.map((b) => (
+              <ReputationBadge key={b.tier} badge={b.tier} earned={b.check(stats)} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-400 font-medium">All badges:</span>
+            {BADGE_DEFS.map((b) => (
+              <ReputationBadge key={b.tier} badge={b.tier} earned={false} />
+            ))}
+          </div>
+        )}
       </CardBody>
     </Card>
   );
 }
 
+// ─── Question Row ─────────────────────────────────────────────────────────────
+
+function QuestionRow({ question }: { question: Question }) {
+  return (
+    <div className="flex items-start gap-3 py-4 border-b border-gray-100 dark:border-dark-border last:border-0">
+      {/* Upvotes */}
+      <div className="flex flex-col items-center min-w-[2.5rem]">
+        <span className="text-base font-bold text-gray-700 dark:text-dark-text">{question.upvotes}</span>
+        <span className="text-xs text-gray-400">votes</span>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <p className="text-sm font-medium text-gray-900 dark:text-dark-text leading-snug line-clamp-2">
+            {question.title}
+          </p>
+          <Badge variant={statusVariant(question.status)} className="flex-shrink-0">
+            {statusLabel(question.status)}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-dark-muted">
+          <span title={question.category}>{categoryIcon(question.category)}</span>
+          <span>{question.category}</span>
+          <span>·</span>
+          <span>{relativeTime(question.createdAt)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Section ──────────────────────────────────────────────────────────────────
+
+function Section({ title, emoji, questions }: { title: string; emoji: string; questions: Question[] }) {
+  if (questions.length === 0) return null;
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wide mb-2">
+        {emoji} {title} <span className="text-gray-400">({questions.length})</span>
+      </h2>
+      <Card className="divide-y divide-gray-100 dark:divide-dark-border">
+        <CardBody className="p-0 px-5">
+          {questions.map((q) => <QuestionRow key={q._id} question={q} />)}
+        </CardBody>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
-function EmptyState({ message, icon }: { message: string; icon: string }) {
+function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <span className="text-5xl mb-4">{icon}</span>
-      <p className="text-gray-500 dark:text-dark-text/60 text-base max-w-xs">{message}</p>
-    </div>
-  );
-}
-
-// ─── Content fetch hook ───────────────────────────────────────────────────────
-
-function useMyQuestions() {
-  return useQuery<MineResponse>({
-    queryKey: ['my-questions'],
-    queryFn: async () => {
-      const sessionId = getSessionId();
-      if (!sessionId) throw new Error('No session — please refresh the page');
-      const { data } = await api.get('/faqs/mine', {
-        headers: { 'X-Session-ID': sessionId },
-      });
-      return data;
-    },
-    enabled: !!getSessionId(),
-  });
-}
-
-// ─── Tab: My Submissions ──────────────────────────────────────────────────────
-
-function SubmissionsTab() {
-  const { data, isLoading, isError, error } = useMyQuestions();
-
-  if (isLoading) return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
-  if (isError)   return <p className="text-red-600 dark:text-red-400 text-center py-8">{(error as Error).message}</p>;
-
-  const questions = data?.submitted ?? [];
-
-  if (questions.length === 0) {
-    return (
-      <EmptyState
-        icon="📝"
-        message="You haven't submitted any questions yet. Head to the Submit page to ask your first question."
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {questions.map((q) => <QuestionCard key={q._id} question={q} />)}
-    </div>
-  );
-}
-
-// ─── Tab: Questions I Upvoted ─────────────────────────────────────────────────
-
-function UpvotedTab() {
-  const { data, isLoading, isError, error } = useMyQuestions();
-
-  if (isLoading) return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
-  if (isError)   return <p className="text-red-600 dark:text-red-400 text-center py-8">{(error as Error).message}</p>;
-
-  const questions = data?.upvotedQuestions ?? [];
-
-  if (questions.length === 0) {
-    return (
-      <EmptyState
-        icon="⬆️"
-        message="You haven't upvoted any questions yet. Browse community questions and upvote ones you find helpful."
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {questions.map((q) => <QuestionCard key={q._id} question={q} />)}
-    </div>
+    <Card className="border-gray-200 dark:border-dark-border">
+      <CardBody className="text-center py-12 space-y-3">
+        <p className="text-4xl">📝</p>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-text">No questions yet</h2>
+        <p className="text-sm text-gray-500 dark:text-dark-muted max-w-xs mx-auto">
+          Submit your first question to start earning reputation points and unlock badges.
+        </p>
+      </CardBody>
+    </Card>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'submitted' | 'upvoted';
-
 export default function MyQuestions() {
-  const [activeTab, setActiveTab] = useState<Tab>('submitted');
-  const sessionId = getSessionId();
-
   return (
     <ErrorBoundary>
-      <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-dark-text">
-            My Questions
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-dark-text/70">
-            Track your submissions and the community questions you've upvoted.
-          </p>
-        </div>
-
-        {/* No session banner */}
-        {!sessionId && (
-          <div className="rounded-lg border border-yellow-200 dark:border-yellow-900/60 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-300">
-            No session detected. Please allow localStorage access to track your questions.
-          </div>
-        )}
-
-        {/* Tabs */}
-        <div className="border-b border-gray-200 dark:border-dark-border">
-          <nav className="flex gap-1" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab('submitted')}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'submitted'
-                  ? 'border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-300'
-                  : 'border-transparent text-gray-500 dark:text-dark-text/60 hover:text-gray-700 dark:hover:text-dark-text hover:border-gray-300 dark:hover:border-dark-border'
-              }`}
-            >
-              My Submissions
-            </button>
-            <button
-              onClick={() => setActiveTab('upvoted')}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'upvoted'
-                  ? 'border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-300'
-                  : 'border-transparent text-gray-500 dark:text-dark-text/60 hover:text-gray-700 dark:hover:text-dark-text hover:border-gray-300 dark:hover:border-dark-border'
-              }`}
-            >
-              Questions I Upvoted
-            </button>
-          </nav>
-        </div>
-
-        {/* Tab content */}
-        <div>
-          {activeTab === 'submitted' ? <SubmissionsTab /> : <UpvotedTab />}
-        </div>
-      </div>
+      <MyQuestionsInner />
     </ErrorBoundary>
+  );
+}
+
+function MyQuestionsInner() {
+  const sessionId = getSessionId();
+
+  const { data, isLoading, isError } = useQuery<MineResponse>({
+    queryKey: ['my-questions'],
+    queryFn: () => api.get('/faqs/mine', { params: { sessionId } }).then((r) => r.data),
+    staleTime: 30_000,
+  });
+
+  const submitted        = data?.submitted        ?? [];
+  const upvotedQuestions = data?.upvotedQuestions ?? [];
+  const reputation       = computeReputation(submitted, upvotedQuestions);
+  const stats            = computeStats(submitted, upvotedQuestions);
+
+  const hasSubmitted = submitted.length > 0;
+  const hasUpvoted   = upvotedQuestions.length > 0;
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-dark-text mb-0.5">My Questions</h1>
+        <p className="text-sm text-gray-500 dark:text-dark-muted">
+          Track your contributions and reputation.
+        </p>
+      </div>
+
+      {/* No session banner */}
+      {!sessionId && (
+        <div className="rounded-lg border border-yellow-200 dark:border-yellow-900/60 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-300">
+          No session detected. Please allow localStorage access to track your questions.
+        </div>
+      )}
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex justify-center py-16">
+          <Spinner size="lg" />
+        </div>
+      )}
+
+      {/* Error */}
+      {isError && (
+        <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
+          <CardBody>
+            <p className="text-sm text-red-700 dark:text-red-300">
+              Failed to load your questions. Make sure the server is running.
+            </p>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Content */}
+      {!isLoading && !isError && (
+        <>
+          <ReputationHeader reputation={reputation} stats={stats} />
+
+          {!hasSubmitted && !hasUpvoted ? (
+            <EmptyState />
+          ) : (
+            <div className="space-y-8">
+              <Section title="Your Questions"      emoji="📝" questions={submitted} />
+              <Section title="Questions You Upvoted" emoji="👍" questions={upvotedQuestions} />
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 # CrowdFAQ
 
-> **Version 1.0** — A general-purpose, crowd-sourced FAQ knowledge base built on the MERN stack.
+> **Version 1.1** — A general-purpose, crowd-sourced FAQ knowledge base built on the MERN stack.
 
 CrowdFAQ lets any community — companies, campuses, teams — host a searchable FAQ knowledge base where users can browse official answers, ask community questions, get instant AI-powered answers, and submit support tickets when nothing exists yet.
 
@@ -16,22 +16,26 @@ The **initial seed data** comes from the [Samagama Internship Program](https://s
 
 | Feature | Description |
 |---------|-------------|
-| **🔍 Dual-Mode Search** | 🔤 **Keyword Search** — fast ranked results by text relevance. 🤖 **AI Search** — reads the full knowledge base and gives a direct answer with source citations. |
+| **🔍 Dual-Mode Search** | 🔤 **Keyword Search** — BM25-ranked results by text relevance. 🤖 **AI Search** — reads the full knowledge base and gives a direct answer with source citations. |
 | **💬 AI Chatbot** | Floating chat button on every page. Handles casual chat (hi/hello) and RAG-powered FAQ answers from your knowledge base. |
 | **📋 Browse FAQs** | Two-panel layout: **Official FAQs** (curated, admin-managed) + **Community Questions** (user-submitted, upvoted). Filter by category. |
-| **📝 Submit Questions** | Support ticket system for questions with no answer yet. Duplicate detection suggests existing matches before you file a ticket. |
+| **📝 Submit Questions** | Support ticket system for questions with no answer yet. Duplicate detection suggests existing matches before you file a ticket. Optional email for admin follow-up. |
 | **🔔 Track Tickets** | Get a tracking ID on submission. Check status, admin notes, and resolution timeline at any time. |
+| **👤 My Questions** | Personal dashboard showing your submitted questions and upvotes, with reputation points and earned badges. |
+| **🏆 Gamification** | Earn points for contributing: +5 per submission, +10 per upvote received, +50 when your question is promoted to Official FAQ. Unlock badges as you level up. |
 | **🔥 Trending** | Most-upvoted question shown on the dashboard — surfaced by the community. |
 | **👍 Upvote & ⭐ Rate** | Community signals that push useful questions toward official status. Questions with 15+ upvotes auto-promote to Official FAQ. |
+| **🌙 Dark Mode** | Toggle between light and dark themes. Preference saved to localStorage. |
 
 ### For Admins
 
 | Feature | Description |
 |---------|-------------|
 | **🔐 JWT-Secured Portal** | Separate admin app. Rate-limited login (10 attempts / 15 min per IP). |
-| **🎫 Ticket Queue** | Filter by status. Add internal notes. Full resolution history per ticket. |
+| **🎫 Ticket Queue** | Filter by status. Add internal notes. Full resolution history per ticket. See submitter email for follow-up. |
 | **✅ Question Moderation** | Approve community questions (push to public) or reject. Tag on approval. |
-| **📊 Content Gap Matrix** | See what people searched for but found no answer for — over 7/30/90 day windows. Identifies knowledge gaps to fill. |
+| **📊 Content Gap Matrix** | See what people searched for but found no answer — over 7/30/90 day windows. Identifies knowledge gaps to fill. |
+| **🔍 Search Analytics** | Top search queries, zero-result queries, and daily search volume charts. Know exactly what your users are looking for. |
 | **🔔 Notification Badges** | Live red badges on nav items show pending tickets and questions count (polled every 30s). |
 
 ---
@@ -46,20 +50,21 @@ apps/
 │       ├── middleware/   JWT auth, error handler, Morgan logger, rate limiter
 │       ├── models/       Question, Ticket, Rating, SearchLog, Admin
 │       ├── routes/       FAQ CRUD, ticket, admin, chat, search
-│       └── utils/        ApiError, TF-IDF auto-categorizer
+│       └── utils/        ApiError, BM25 ranker, TF-IDF auto-categorizer
 │
 ├── web/              React 18 + TypeScript + Vite + TailwindCSS  —  port 5173
 │   └── src/
-│       ├── components/   ChatBot (RAG + casual), UI library
-│       ├── pages/        MainDashboard, BrowseSearch, SubmitTicket, TicketTracking
-│       ├── layouts/      AppShell (sticky header + floating chatbot)
-│       ├── lib/          Axios client
+│       ├── components/   ChatBot (RAG + casual), UI library, JsonLd, ReputationBadge
+│       ├── contexts/     ThemeContext (dark mode)
+│       ├── pages/        MainDashboard, BrowseSearch, SubmitTicket, TicketTracking, MyQuestions
+│       ├── layouts/      AppShell (sticky header, theme toggle, floating chatbot)
+│       ├── lib/          Axios client, session ID helper
 │       └── router/       TanStack Router v7 + TanStack Query v5
 │
 └── admin/             React 18 + TypeScript + Vite  —  port 5174
     └── src/
         ├── components/   AdminShell (sidebar + polling)
-        ├── pages/        Login, Dashboard, TicketQueue, QuestionQueue, ContentGaps
+        ├── pages/        Login, Dashboard, TicketQueue, QuestionQueue, ContentGaps, SearchAnalytics
         ├── hooks/        useAdminAuth
         └── router/       TanStack Router v1
 
@@ -80,9 +85,10 @@ samagama-rag-chatbot/    Python + FastAPI RAG pipeline  —  port 8000
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/faqs` | List FAQs — filter by `type`, `category`, `search`, `page` |
+| `GET` | `/api/faqs` | List FAQs — filter by `type`, `category`, `search`, `page`. Search uses BM25 ranking when `search` param is present. |
 | `GET` | `/api/faqs/trending` | Most upvoted official FAQ |
 | `GET` | `/api/faqs/search/similar` | Duplicate detection for ticket submission |
+| `GET` | `/api/faqs/mine` | My submissions and upvoted questions (requires `X-Session-ID` header). Returns `{ submitted, upvotedQuestions }` |
 | `GET` | `/api/faqs/:id` | Single FAQ by ID |
 | `POST` | `/api/faqs/:id/upvote` | Upvote (session-deduplicated, triggers auto-promotion at 15) |
 | `POST` | `/api/faqs/:id/rate` | Star rating 1–5 (upsert, records count) |
@@ -91,7 +97,7 @@ samagama-rag-chatbot/    Python + FastAPI RAG pipeline  —  port 8000
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/tickets` | Submit a support ticket |
+| `POST` | `/api/tickets` | Submit a support ticket. Accepts optional `submitterEmail` for admin follow-up. |
 | `GET` | `/api/tickets/:trackingId` | Track ticket by ID (format: `TKT-YYYY-XXXXXXXX`) |
 
 ### Chat & Search (RAG)
@@ -112,6 +118,7 @@ samagama-rag-chatbot/    Python + FastAPI RAG pipeline  —  port 8000
 | `POST` | `/api/admin/questions/:id/approve` | Approve → `public_community` + tags |
 | `POST` | `/api/admin/questions/:id/reject` | Reject → `rejected` |
 | `GET` | `/api/admin/gaps` | Content gap matrix — zero-result searches + low-rated content |
+| `GET` | `/api/admin/search-analytics` | Top queries, zero-result queries, daily search volume. Query: `?period=7d\|30d\|90d` |
 | `GET` | `/api/admin/notifications/count` | `{ pendingTickets, pendingQuestions }` for badge counts |
 
 ---
@@ -167,7 +174,7 @@ cd apps/server && npm run seed
 ```
 
 Seeds the database with sample questions and one admin account:
-- **User login:** `admin` / `admin123`
+- **Admin login:** `admin` / `admin123`
 - *(Swap seed data with your own FAQ JSON to rebrand)*
 
 ### 5. Start All Services
@@ -202,10 +209,11 @@ cd samagama-rag-chatbot
 
 | Layer | Technology |
 |-------|-----------|
-| **Public Frontend** | React 18 + TypeScript, Vite, TailwindCSS, TanStack Router v7, TanStack Query v5 |
+| **Public Frontend** | React 18 + TypeScript, Vite, TailwindCSS (dark mode), TanStack Router v7, TanStack Query v5 |
 | **Admin Frontend** | React 18 + TypeScript, Vite, TanStack Router v1 |
-| **Backend API** | Node.js + Express.js |
+| **Backend API** | Node.js + Express.js, Zod validation, Morgan logging |
 | **RAG Pipeline** | Python + FastAPI + ChromaDB + SentenceTransformers (all-MiniLM-L6-v2) + Google Gemini |
+| **Search Ranking** | BM25 algorithm (Node.js) for keyword search |
 | **Database** | MongoDB 8.x |
 | **Auth** | JWT (admin), localStorage session IDs (public features) |
 
