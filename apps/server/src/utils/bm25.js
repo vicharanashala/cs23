@@ -1,6 +1,9 @@
 /**
  * Simple BM25 ranking for FAQ search.
  * Fetches all matching FAQs and scores them in Node.js using BM25.
+ *
+ * Usage: searchFaqs(query, filter, { limit, skip }, Question)
+ * The Question model is passed in explicitly to avoid module-loading edge cases.
  */
 
 function tokenize(text) {
@@ -19,7 +22,6 @@ function bm25Scores(query, documents, docFields) {
   const queryTokens = tokenize(query);
   if (!queryTokens.length) return documents.map((_, i) => ({ idx: i, score: 0 }));
 
-  // Build doc frequency map
   const docFreqs = {};
   documents.forEach((doc) => {
     const tokens = tokenize(docFields(doc));
@@ -47,9 +49,14 @@ function bm25Scores(query, documents, docFields) {
   });
 }
 
-async function searchFaqs(query, mongoFilter, { limit = 20, skip = 0 } = {}) {
-  const { Question } = require('../models/Question');
-
+/**
+ * @param {string} query - Search query string
+ * @param {object} mongoFilter - MongoDB filter object
+ * @param {{ limit?: number, skip?: number }} opts - Pagination options
+ * @param {object} Question - The Question Mongoose model
+ */
+async function searchFaqs(query, mongoFilter, opts = {}, Question) {
+  const { limit = 20, skip = 0 } = opts;
   const docs = await Question.find(mongoFilter).lean();
   const scores = bm25Scores(query, docs, d => `${d.title} ${d.description || ''} ${d.body || ''}`);
 

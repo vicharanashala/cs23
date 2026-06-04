@@ -28,13 +28,57 @@ function getCasualResponse(text: string): string | null {
   return null;
 }
 
-async function getChatResponse(message: string) {
+// ─── FAQ-based answer engine (no external RAG required) ─────────────────────
+async function getChatResponse(message: string): Promise<{ answer: string }> {
+  // 1. Try the RAG proxy endpoint first (if external service exists)
   try {
-    const res = await api.post<{ answer: string }>('/search?q=' + encodeURIComponent(message) + '&mode=ai', {});
-    return { answer: res.data.answer };
+    const res = await api.post<{ answer: string }>('/search', { q: message, mode: 'ai' });
+    if (res.data?.answer) return { answer: res.data.answer };
   } catch {
-    const res = await api.post<{ answer: string }>('/chat', { message });
-    return { answer: res.data.answer };
+    // RAG service unavailable — fall through to local FAQ engine
+  }
+
+  // 2. Fallback: search MongoDB FAQ data directly and synthesize an answer
+  try {
+    const q = encodeURIComponent(message.trim());
+    const [officialRes, communityRes] = await Promise.all([
+      api.get(`/faqs?type=official&search=${q}&limit=5`),
+      api.get(`/faqs?type=community&search=${q}&limit=5`),
+    ]);
+
+    const officialFaqs: any[] = officialRes.data?.faqs ?? [];
+    const communityFaqs: any[] = communityRes.data?.faqs ?? [];
+    const allFaqs = [...officialFaqs, ...communityFaqs];
+
+    if (allFaqs.length === 0) {
+      return {
+        answer: `I couldn't find any FAQs matching "${message.trim()}". Try browsing different keywords, or submit a support ticket and our team will help you directly! 🎫`,
+      };
+    }
+
+    // Build a friendly synthesized answer from top matches
+    const top = allFaqs[0];
+    let answer = `I found something that might help! 👇\n\n`;
+    answer += `**${top.title}**\n`;
+    if (top.description) answer += `${top.description}\n\n`;
+    if (top.body) answer += `${top.body}\n\n`;
+    if (top.category) answer += `_Category: ${top.category}_`;
+
+    if (allFaqs.length > 1) {
+      answer += `\n\n---\n\n**Other things I found:**\n`;
+      allFaqs.slice(1, 3).forEach((faq: any, i: number) => {
+        answer += `\n${i + 1}. ${faq.title}`;
+        if (faq.description) answer += ` — ${faq.description.substring(0, 80)}${faq.description.length > 80 ? '...' : ''}`;
+      });
+    }
+
+    answer += `\n\n_Want more details? Use the Browse & Search page for full results!_ 🔍`;
+
+    return { answer };
+  } catch {
+    return {
+      answer: `I'm having trouble answering that right now. Please try again or browse the FAQs directly! 🙏`,
+    };
   }
 }
 

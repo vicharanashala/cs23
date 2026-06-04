@@ -18,7 +18,7 @@ const CATEGORIES = [
 ];
 
 const SubmitTicketSchema = z.object({
-  submitterEmail: z.string().trim().lowercase().optional(),
+  submitterEmail: z.string().trim().transform(v => v.toLowerCase()).optional(),
   category: z.string().refine((v) => CATEGORIES.includes(v), {
     message: `category must be one of: ${CATEGORIES.join(', ')}`,
   }),

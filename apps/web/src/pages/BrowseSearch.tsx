@@ -111,11 +111,42 @@ function AiAnswer({ query }: { query: string }) {
     setError(null);
 
     setIsLoading(true);
-    api.post<{ answer: string; context?: string[] }>('/chat', { message: query })
-      .then(res => {
-        setAnswer(res.data.answer);
-        setContext(res.data.context || []);
-        setError(null);
+
+    // Build answer from MongoDB FAQ data (no external RAG required)
+    Promise.all([
+      api.get(`/faqs?type=official&search=${encodeURIComponent(query)}&limit=5`),
+      api.get(`/faqs?type=community&search=${encodeURIComponent(query)}&limit=5`),
+    ])
+      .then(([officialRes, communityRes]) => {
+        const officialFaqs: any[] = officialRes.data?.faqs ?? [];
+        const communityFaqs: any[] = communityRes.data?.faqs ?? [];
+        const allFaqs = [...officialFaqs, ...communityFaqs];
+
+        if (allFaqs.length === 0) {
+          setAnswer(`I couldn't find any FAQs matching "${query}". Try different keywords, or submit a support ticket! 🎫`);
+          setContext([]);
+          return;
+        }
+
+        const top = allFaqs[0];
+        let text = `I found ${allFaqs.length} matching result${allFaqs.length !== 1 ? 's' : ''}! 👇\n\n`;
+        text += `**${top.title}**\n`;
+        if (top.description) text += `${top.description}\n\n`;
+        if (top.body) text += `${top.body}\n\n`;
+        if (top.category) text += `_Category: ${top.category}_`;
+
+        if (allFaqs.length > 1) {
+          text += `\n\n---\n\n**Other matches:**\n`;
+          allFaqs.slice(1, 3).forEach((faq: any, i: number) => {
+            text += `\n${i + 1}. ${faq.title}`;
+            if (faq.description) text += ` — ${faq.description.substring(0, 80)}${faq.description.length > 80 ? '...' : ''}`;
+          });
+        }
+
+        text += `\n\n_Visit the full Browse & Search page to explore all results!_ 🔍`;
+
+        setAnswer(text);
+        setContext(allFaqs.map((f: any) => `Question:\n${f.title}\n\nAnswer:\n${f.description || f.body || ''}`));
       })
       .catch(() => setError('Failed to get AI response. Please try again.'))
       .finally(() => setIsLoading(false));

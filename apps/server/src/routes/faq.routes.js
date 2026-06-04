@@ -42,7 +42,7 @@ router.get('/faqs', async (req, res) => {
   // BM25 ranking when search term present (length >= 3)
   if (search && search.trim().length >= 3) {
     const trimmed = search.trim();
-    const result = await searchFaqs(trimmed, filter, { limit: limitNum, skip });
+    const result = await searchFaqs(trimmed, filter, { limit: limitNum, skip }, Question);
     faqs = result.faqs;
     total = result.total;
 
@@ -109,7 +109,33 @@ router.get('/faqs/search/similar', async (req, res) => {
   const { title } = req.query;
 
   if (!title || title.trim().length < 3) {
-    return res.json({ results: [] });
+    return res.json({ results: [] })
+
+// GET /api/faqs/mine
+// Header: X-Session-ID — returns submitted questions and upvoted questions for that user.
+// Returns: { submitted: Faq[], upvotedQuestions: Faq[] }
+// ---------------------------------------------------------------------------
+router.get('/faqs/mine', async (req, res) => {
+  const sessionId = req.headers['x-session-id'];
+
+  if (!sessionId) {
+    throw new ApiError(400, 'X-Session-ID header is required');
+  }
+
+  const [submitted, upvotedQuestions] = await Promise.all([
+    Question.find({ createdBy: sessionId }).sort({ createdAt: -1 }).lean(),
+    Question.find({ upvotedBy: sessionId }).sort({ upvotes: -1 }).lean(),
+  ]);
+
+  res.json({ submitted, upvotedQuestions });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/faqs/:id/upvote
+// Body: { sessionId }
+// Prevent double-voting. Auto-promote to official_faq at 15 upvotes.
+// Returns: { upvotes, promoted }
+// ---------------------------------------------------------------------------;
   }
 
   const matches = await Question.find(
@@ -161,31 +187,6 @@ router.post('/faqs', async (req, res) => {
   res.status(201).json(faq);
 });
 
-// ---------------------------------------------------------------------------
-// GET /api/faqs/mine
-// Header: X-Session-ID — returns submitted questions and upvoted questions for that user.
-// Returns: { submitted: Faq[], upvotedQuestions: Faq[] }
-// ---------------------------------------------------------------------------
-router.get('/faqs/mine', async (req, res) => {
-  const sessionId = req.headers['x-session-id'];
-
-  if (!sessionId) {
-    throw new ApiError(400, 'X-Session-ID header is required');
-  }
-
-  const [submitted, upvotedQuestions] = await Promise.all([
-    Question.find({ createdBy: sessionId }).sort({ createdAt: -1 }).lean(),
-    Question.find({ upvotedBy: sessionId }).sort({ upvotes: -1 }).lean(),
-  ]);
-
-  res.json({ submitted, upvotedQuestions });
-});
-
-// ---------------------------------------------------------------------------
-// POST /api/faqs/:id/upvote
-// Body: { sessionId }
-// Prevent double-voting. Auto-promote to official_faq at 15 upvotes.
-// Returns: { upvotes, promoted }
 // ---------------------------------------------------------------------------
 router.post('/faqs/:id/upvote', async (req, res) => {
   const { sessionId } = req.body;
