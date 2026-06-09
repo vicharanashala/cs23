@@ -6,7 +6,7 @@ CrowdFAQ lets any community — companies, campuses, teams — host a searchable
 
 The **initial seed data** comes from the [Samagama Internship Program](https://samagama.in) at Vicharanashala Lab, IIT Ropar. The platform itself is fully generic — swap the data, it's your FAQ platform.
 
-**Live:** `your-domain.com/faq`
+**Live Demo:** [Watch here](https://drive.google.com/file/d/11wClgmEg0zFYBUWISRKJyzOEWhtlCSj3/view?usp=sharing)
 
 ---
 
